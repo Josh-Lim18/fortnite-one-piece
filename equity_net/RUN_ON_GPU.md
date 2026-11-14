@@ -50,4 +50,4 @@ uv run --python 3.12 --with torch python equity_net/test_net.py
 uv run --python 3.12 python tools/test_bot.py
 ```
 
-Then commit `equity_net/weights.txt` and `bot.py` on a branch and hand the branch to Owen. The network stays off (`PARAMS["equity_net"]`) until `tools/sim.py bot.py --vs tools/baseline_bot.py`, run with it on, shows it helps.
+Then commit `equity_net/weights.txt` and `bot.py` on a branch and hand the branch to Owen. The new weights replace the laptop ones only after `python3 tools/sim.py bot.py --vs <the bot.py with laptop weights> --rounds 24` shows they are no worse.
