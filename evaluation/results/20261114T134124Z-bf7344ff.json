@@ -1,0 +1,1143 @@
+{
+ "id": "bf7344ff",
+ "time": "2026-11-14T13:41:24+00:00",
+ "final": true,
+ "engine_revision": "9d3c3bac7e9f8da292bd4159d0da27d8c5baa05287089aacd7e6f1a9a1452cdb",
+ "kit": "../kit",
+ "incumbent": {
+  "path": "../kit/bot.py",
+  "sha256": "ceb556b6a2400a6b15872887c239e0af9666e38c2ba52772f3cf73ea3e848da5",
+  "chips": -528412,
+  "bb100": -82.56,
+  "diff_bb100": 0.0,
+  "se_bb100": 0.0,
+  "round_diffs": [
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0
+  ],
+  "errors": 0,
+  "timeouts": 1,
+  "decisions": 64220,
+  "bank_outs": 0,
+  "worst_round_think_s": 0.022,
+  "worst_decision_ms": 14.09
+ },
+ "candidates": [
+  {
+   "path": "../bot.py",
+   "sha256": "1e68bb47ed2ab84b4322bcb5a852ae467a5ba7d6b32f94ffed185cf6549a19f5",
+   "chips": 1148192,
+   "bb100": 179.41,
+   "diff_bb100": 261.97,
+   "se_bb100": 25.76,
+   "round_diffs": [
+    266.655,
+    247.36,
+    170.075,
+    188.1,
+    252.74,
+    35.685,
+    305.195,
+    206.675,
+    235.455,
+    175.035,
+    515.04,
+    442.31,
+    9.94,
+    258.645,
+    466.295,
+    281.805,
+    479.83,
+    511.51,
+    60.315,
+    231.49,
+    222.05,
+    329.745,
+    316.44,
+    278.735,
+    197.475,
+    462.165,
+    206.75,
+    392.985,
+    295.705,
+    91.115,
+    330.04,
+    -80.34
+   ],
+   "errors": 0,
+   "timeouts": 36,
+   "decisions": 39112,
+   "bank_outs": 0,
+   "worst_round_think_s": 0.657,
+   "worst_decision_ms": 31.72
+  }
+ ],
+ "opponents": [
+  {
+   "path": "evaluation/opponents/clone_base.py",
+   "sha256": "c90a4448c1d544fcb1aa9ad1550c51c920d40562d3e751c21843287adfd4be1f"
+  },
+  {
+   "path": "evaluation/opponents/equity_tag.py",
+   "sha256": "b1a50be2bccb4884ffb6a3e7929c6f4f9ff1ba0f834bb0e951024f765f4b6822"
+  },
+  {
+   "path": "evaluation/opponents/maniac.py",
+   "sha256": "fba3a206b10d4f4f63cdcd0c0251ccb758fecbfa52bbfc7ddc7d2f4516ecabc4"
+  },
+  {
+   "path": "evaluation/opponents/nit.py",
+   "sha256": "46a465ceb17204f484c455810f4ada7f5c9c88334cb7af8d3f7bd75e675e45f0"
+  },
+  {
+   "path": "evaluation/opponents/shover.py",
+   "sha256": "5a619f92217d524bbf039b4b0e8bac9fa30cda7eaebe42d09f66fa61c6aba44a"
+  },
+  {
+   "path": "evaluation/opponents/starter.py",
+   "sha256": "7947ec1845776af0e64cff84a083fed3277a4567352032f56ce137f06d553e3a"
+  },
+  {
+   "path": "evaluation/opponents/trapper.py",
+   "sha256": "e9c2f04989d1baf62777c9547c6b48aeda21331b167db23c4f42af869315d571"
+  }
+ ],
+ "settings": {
+  "rounds": 32,
+  "hands": 1000,
+  "seats": 8,
+  "big_blind": 20,
+  "betting": "no_limit",
+  "raise_cap": 0,
+  "base_seed": null,
+  "in_process": true,
+  "timeout_ms": 10.0,
+  "bank_ms": 10000.0,
+  "python": "3.14.7",
+  "note": "in-process: timeouts count decisions over timeout_ms and bank_outs count rounds over bank_ms, but nothing is cut off"
+ },
+ "rounds": [
+  {
+   "seed": 39648905,
+   "seat": 0,
+   "opponents": [
+    1,
+    5,
+    2,
+    4,
+    2,
+    1,
+    0
+   ],
+   "bots": [
+    {
+     "chips": -26258,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 1782,
+     "think_ms": 8.7,
+     "max_ms": 2.13
+    },
+    {
+     "chips": 27073,
+     "errors": 0,
+     "timeouts": 1,
+     "decisions": 1138,
+     "think_ms": 326.0,
+     "max_ms": 12.92
+    }
+   ]
+  },
+  {
+   "seed": 94460303,
+   "seat": 1,
+   "opponents": [
+    2,
+    5,
+    1,
+    1,
+    0,
+    2,
+    0
+   ],
+   "bots": [
+    {
+     "chips": -15739,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 1672,
+     "think_ms": 8.1,
+     "max_ms": 0.91
+    },
+    {
+     "chips": 33733,
+     "errors": 0,
+     "timeouts": 1,
+     "decisions": 1137,
+     "think_ms": 392.5,
+     "max_ms": 11.28
+    }
+   ]
+  },
+  {
+   "seed": 150820205,
+   "seat": 2,
+   "opponents": [
+    6,
+    1,
+    1,
+    1,
+    1,
+    1,
+    4
+   ],
+   "bots": [
+    {
+     "chips": -24412,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 1919,
+     "think_ms": 8.7,
+     "max_ms": 1.59
+    },
+    {
+     "chips": 9603,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 1202,
+     "think_ms": 266.3,
+     "max_ms": 6.18
+    }
+   ]
+  },
+  {
+   "seed": 174147147,
+   "seat": 3,
+   "opponents": [
+    2,
+    1,
+    2,
+    4,
+    5,
+    2,
+    1
+   ],
+   "bots": [
+    {
+     "chips": 21593,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 1592,
+     "think_ms": 11.3,
+     "max_ms": 5.03
+    },
+    {
+     "chips": 59213,
+     "errors": 0,
+     "timeouts": 1,
+     "decisions": 1096,
+     "think_ms": 296.9,
+     "max_ms": 13.06
+    }
+   ]
+  },
+  {
+   "seed": 178648603,
+   "seat": 4,
+   "opponents": [
+    4,
+    0,
+    1,
+    1,
+    3,
+    0,
+    3
+   ],
+   "bots": [
+    {
+     "chips": -38402,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 2202,
+     "think_ms": 9.3,
+     "max_ms": 0.8
+    },
+    {
+     "chips": 12146,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 1100,
+     "think_ms": 212.4,
+     "max_ms": 5.65
+    }
+   ]
+  },
+  {
+   "seed": 191294106,
+   "seat": 5,
+   "opponents": [
+    4,
+    3,
+    2,
+    6,
+    0,
+    2,
+    0
+   ],
+   "bots": [
+    {
+     "chips": 38283,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 1999,
+     "think_ms": 8.2,
+     "max_ms": 0.41
+    },
+    {
+     "chips": 45420,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 1182,
+     "think_ms": 344.2,
+     "max_ms": 6.43
+    }
+   ]
+  },
+  {
+   "seed": 201625994,
+   "seat": 6,
+   "opponents": [
+    5,
+    5,
+    4,
+    0,
+    3,
+    3,
+    6
+   ],
+   "bots": [
+    {
+     "chips": -27348,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 2304,
+     "think_ms": 8.9,
+     "max_ms": 0.85
+    },
+    {
+     "chips": 33691,
+     "errors": 0,
+     "timeouts": 3,
+     "decisions": 1327,
+     "think_ms": 534.9,
+     "max_ms": 13.29
+    }
+   ]
+  },
+  {
+   "seed": 278756915,
+   "seat": 7,
+   "opponents": [
+    0,
+    1,
+    0,
+    6,
+    2,
+    5,
+    0
+   ],
+   "bots": [
+    {
+     "chips": -15393,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 1950,
+     "think_ms": 7.1,
+     "max_ms": 0.15
+    },
+    {
+     "chips": 25942,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 1264,
+     "think_ms": 459.0,
+     "max_ms": 7.62
+    }
+   ]
+  },
+  {
+   "seed": 371603343,
+   "seat": 0,
+   "opponents": [
+    6,
+    6,
+    0,
+    5,
+    0,
+    6,
+    3
+   ],
+   "bots": [
+    {
+     "chips": -41242,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 2741,
+     "think_ms": 13.3,
+     "max_ms": 1.29
+    },
+    {
+     "chips": 5849,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 1470,
+     "think_ms": 608.1,
+     "max_ms": 7.2
+    }
+   ]
+  },
+  {
+   "seed": 424808990,
+   "seat": 1,
+   "opponents": [
+    1,
+    4,
+    6,
+    6,
+    3,
+    1,
+    2
+   ],
+   "bots": [
+    {
+     "chips": 1929,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 1821,
+     "think_ms": 17.2,
+     "max_ms": 6.94
+    },
+    {
+     "chips": 36936,
+     "errors": 0,
+     "timeouts": 3,
+     "decisions": 1287,
+     "think_ms": 488.2,
+     "max_ms": 31.72
+    }
+   ]
+  },
+  {
+   "seed": 444823753,
+   "seat": 2,
+   "opponents": [
+    1,
+    1,
+    6,
+    6,
+    4,
+    4,
+    4
+   ],
+   "bots": [
+    {
+     "chips": -65443,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 1860,
+     "think_ms": 8.2,
+     "max_ms": 0.56
+    },
+    {
+     "chips": 37565,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 1120,
+     "think_ms": 173.1,
+     "max_ms": 4.26
+    }
+   ]
+  },
+  {
+   "seed": 454789883,
+   "seat": 3,
+   "opponents": [
+    1,
+    0,
+    4,
+    3,
+    1,
+    4,
+    6
+   ],
+   "bots": [
+    {
+     "chips": -88871,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 2060,
+     "think_ms": 8.1,
+     "max_ms": 0.07
+    },
+    {
+     "chips": -409,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 1144,
+     "think_ms": 198.2,
+     "max_ms": 4.26
+    }
+   ]
+  },
+  {
+   "seed": 481456039,
+   "seat": 4,
+   "opponents": [
+    5,
+    0,
+    2,
+    1,
+    0,
+    3,
+    6
+   ],
+   "bots": [
+    {
+     "chips": 28405,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 1893,
+     "think_ms": 7.6,
+     "max_ms": 0.11
+    },
+    {
+     "chips": 30393,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 1231,
+     "think_ms": 494.0,
+     "max_ms": 7.73
+    }
+   ]
+  },
+  {
+   "seed": 495136918,
+   "seat": 5,
+   "opponents": [
+    3,
+    2,
+    3,
+    0,
+    1,
+    5,
+    3
+   ],
+   "bots": [
+    {
+     "chips": -1445,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 2220,
+     "think_ms": 11.4,
+     "max_ms": 1.31
+    },
+    {
+     "chips": 50284,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 1236,
+     "think_ms": 418.9,
+     "max_ms": 7.61
+    }
+   ]
+  },
+  {
+   "seed": 603456556,
+   "seat": 6,
+   "opponents": [
+    0,
+    5,
+    5,
+    6,
+    0,
+    3,
+    3
+   ],
+   "bots": [
+    {
+     "chips": -46449,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 2332,
+     "think_ms": 8.7,
+     "max_ms": 0.34
+    },
+    {
+     "chips": 46810,
+     "errors": 0,
+     "timeouts": 1,
+     "decisions": 1351,
+     "think_ms": 571.3,
+     "max_ms": 11.16
+    }
+   ]
+  },
+  {
+   "seed": 610575931,
+   "seat": 7,
+   "opponents": [
+    3,
+    6,
+    0,
+    5,
+    6,
+    4,
+    0
+   ],
+   "bots": [
+    {
+     "chips": -56238,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 2415,
+     "think_ms": 10.0,
+     "max_ms": 1.19
+    },
+    {
+     "chips": 123,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 1357,
+     "think_ms": 503.9,
+     "max_ms": 8.9
+    }
+   ]
+  },
+  {
+   "seed": 627390648,
+   "seat": 0,
+   "opponents": [
+    0,
+    0,
+    4,
+    4,
+    6,
+    0,
+    3
+   ],
+   "bots": [
+    {
+     "chips": -89231,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 2383,
+     "think_ms": 20.4,
+     "max_ms": 8.32
+    },
+    {
+     "chips": 6735,
+     "errors": 0,
+     "timeouts": 2,
+     "decisions": 1191,
+     "think_ms": 387.2,
+     "max_ms": 12.1
+    }
+   ]
+  },
+  {
+   "seed": 653254538,
+   "seat": 1,
+   "opponents": [
+    4,
+    4,
+    6,
+    3,
+    4,
+    2,
+    5
+   ],
+   "bots": [
+    {
+     "chips": -52509,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 1729,
+     "think_ms": 8.7,
+     "max_ms": 0.67
+    },
+    {
+     "chips": 49793,
+     "errors": 0,
+     "timeouts": 2,
+     "decisions": 1161,
+     "think_ms": 340.9,
+     "max_ms": 10.79
+    }
+   ]
+  },
+  {
+   "seed": 734147400,
+   "seat": 2,
+   "opponents": [
+    1,
+    3,
+    5,
+    3,
+    1,
+    1,
+    5
+   ],
+   "bots": [
+    {
+     "chips": 11229,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 2068,
+     "think_ms": 7.7,
+     "max_ms": 0.24
+    },
+    {
+     "chips": 23292,
+     "errors": 0,
+     "timeouts": 7,
+     "decisions": 1227,
+     "think_ms": 600.9,
+     "max_ms": 18.52
+    }
+   ]
+  },
+  {
+   "seed": 753163020,
+   "seat": 3,
+   "opponents": [
+    6,
+    1,
+    4,
+    2,
+    0,
+    2,
+    1
+   ],
+   "bots": [
+    {
+     "chips": -19886,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 2081,
+     "think_ms": 9.8,
+     "max_ms": 0.57
+    },
+    {
+     "chips": 26412,
+     "errors": 0,
+     "timeouts": 5,
+     "decisions": 1178,
+     "think_ms": 509.3,
+     "max_ms": 28.67
+    }
+   ]
+  },
+  {
+   "seed": 870217263,
+   "seat": 4,
+   "opponents": [
+    2,
+    5,
+    4,
+    5,
+    4,
+    1,
+    1
+   ],
+   "bots": [
+    {
+     "chips": 11405,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 1698,
+     "think_ms": 10.2,
+     "max_ms": 3.54
+    },
+    {
+     "chips": 55815,
+     "errors": 0,
+     "timeouts": 2,
+     "decisions": 1170,
+     "think_ms": 373.7,
+     "max_ms": 22.2
+    }
+   ]
+  },
+  {
+   "seed": 878127634,
+   "seat": 5,
+   "opponents": [
+    3,
+    2,
+    5,
+    0,
+    5,
+    6,
+    6
+   ],
+   "bots": [
+    {
+     "chips": -23079,
+     "errors": 0,
+     "timeouts": 1,
+     "decisions": 1967,
+     "think_ms": 22.0,
+     "max_ms": 14.09
+    },
+    {
+     "chips": 42870,
+     "errors": 0,
+     "timeouts": 3,
+     "decisions": 1246,
+     "think_ms": 530.4,
+     "max_ms": 15.53
+    }
+   ]
+  },
+  {
+   "seed": 902142363,
+   "seat": 6,
+   "opponents": [
+    2,
+    6,
+    5,
+    6,
+    6,
+    6,
+    3
+   ],
+   "bots": [
+    {
+     "chips": 275,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 2548,
+     "think_ms": 18.0,
+     "max_ms": 6.73
+    },
+    {
+     "chips": 63563,
+     "errors": 0,
+     "timeouts": 2,
+     "decisions": 1408,
+     "think_ms": 657.4,
+     "max_ms": 14.24
+    }
+   ]
+  },
+  {
+   "seed": 939480534,
+   "seat": 7,
+   "opponents": [
+    2,
+    4,
+    6,
+    0,
+    5,
+    6,
+    0
+   ],
+   "bots": [
+    {
+     "chips": -29061,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 2294,
+     "think_ms": 17.3,
+     "max_ms": 7.43
+    },
+    {
+     "chips": 26686,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 1269,
+     "think_ms": 454.0,
+     "max_ms": 8.52
+    }
+   ]
+  },
+  {
+   "seed": 957737480,
+   "seat": 0,
+   "opponents": [
+    1,
+    1,
+    4,
+    6,
+    5,
+    4,
+    5
+   ],
+   "bots": [
+    {
+     "chips": -11146,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 1870,
+     "think_ms": 11.0,
+     "max_ms": 4.09
+    },
+    {
+     "chips": 28349,
+     "errors": 0,
+     "timeouts": 1,
+     "decisions": 1231,
+     "think_ms": 401.0,
+     "max_ms": 14.19
+    }
+   ]
+  },
+  {
+   "seed": 963916537,
+   "seat": 1,
+   "opponents": [
+    4,
+    2,
+    1,
+    3,
+    4,
+    2,
+    1
+   ],
+   "bots": [
+    {
+     "chips": -45021,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 1832,
+     "think_ms": 9.9,
+     "max_ms": 1.09
+    },
+    {
+     "chips": 47412,
+     "errors": 0,
+     "timeouts": 2,
+     "decisions": 1195,
+     "think_ms": 318.7,
+     "max_ms": 13.86
+    }
+   ]
+  },
+  {
+   "seed": 983533188,
+   "seat": 2,
+   "opponents": [
+    4,
+    5,
+    1,
+    6,
+    5,
+    1,
+    6
+   ],
+   "bots": [
+    {
+     "chips": -8734,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 2073,
+     "think_ms": 13.8,
+     "max_ms": 3.1
+    },
+    {
+     "chips": 32616,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 1263,
+     "think_ms": 383.7,
+     "max_ms": 4.78
+    }
+   ]
+  },
+  {
+   "seed": 987168782,
+   "seat": 3,
+   "opponents": [
+    4,
+    0,
+    4,
+    1,
+    0,
+    3,
+    2
+   ],
+   "bots": [
+    {
+     "chips": -53742,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 1967,
+     "think_ms": 11.8,
+     "max_ms": 2.82
+    },
+    {
+     "chips": 24855,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 1233,
+     "think_ms": 327.8,
+     "max_ms": 3.8
+    }
+   ]
+  },
+  {
+   "seed": 987793746,
+   "seat": 4,
+   "opponents": [
+    4,
+    3,
+    4,
+    2,
+    0,
+    5,
+    3
+   ],
+   "bots": [
+    {
+     "chips": -14676,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 1649,
+     "think_ms": 8.5,
+     "max_ms": 1.18
+    },
+    {
+     "chips": 44465,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 1177,
+     "think_ms": 278.3,
+     "max_ms": 5.61
+    }
+   ]
+  },
+  {
+   "seed": 991777521,
+   "seat": 5,
+   "opponents": [
+    2,
+    5,
+    5,
+    3,
+    1,
+    3,
+    5
+   ],
+   "bots": [
+    {
+     "chips": 72096,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 1932,
+     "think_ms": 10.8,
+     "max_ms": 2.15
+    },
+    {
+     "chips": 90319,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 1212,
+     "think_ms": 354.8,
+     "max_ms": 3.78
+    }
+   ]
+  },
+  {
+   "seed": 1020913304,
+   "seat": 6,
+   "opponents": [
+    0,
+    3,
+    3,
+    6,
+    5,
+    2,
+    0
+   ],
+   "bots": [
+    {
+     "chips": -8198,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 1801,
+     "think_ms": 7.4,
+     "max_ms": 0.33
+    },
+    {
+     "chips": 57810,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 1228,
+     "think_ms": 298.8,
+     "max_ms": 7.84
+    }
+   ]
+  },
+  {
+   "seed": 1045829268,
+   "seat": 7,
+   "opponents": [
+    1,
+    3,
+    1,
+    2,
+    2,
+    2,
+    4
+   ],
+   "bots": [
+    {
+     "chips": 88896,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 1566,
+     "think_ms": 7.0,
+     "max_ms": 0.08
+    },
+    {
+     "chips": 72828,
+     "errors": 0,
+     "timeouts": 0,
+     "decisions": 1081,
+     "think_ms": 170.8,
+     "max_ms": 2.31
+    }
+   ]
+  }
+ ]
+}
