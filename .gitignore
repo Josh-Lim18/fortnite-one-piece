@@ -2,3 +2,4 @@
 hands/
 __pycache__/
 .claude/worktrees/
+adaption/data/
