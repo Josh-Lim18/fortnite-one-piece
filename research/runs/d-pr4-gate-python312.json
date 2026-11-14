@@ -1,0 +1,58 @@
+{
+  "kind": "D_PR4_gate_integration_not_ranking",
+  "created_utc": "2026-11-14T14:07:33.421966+00:00",
+  "python": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+  "gate_revision": "033851cf22f086267c5ac6defce46a14748d5528",
+  "gate_path": "tests/check_submission.py",
+  "gate_sha256": "f3256ae001e6fef19bf3508ceddadf8cce3230bcc5dc44417a486fba2ccd3f0d",
+  "hands_per_format": 1000,
+  "formats": [
+    "no_limit",
+    "pot_limit",
+    "fixed_limit",
+    "no_limit_raise_cap_3"
+  ],
+  "timeout_ms": 10,
+  "bank_ms": 10000,
+  "gate_max_think_ms": 5000,
+  "gate_max_timeout_share": 0.01,
+  "platform_verified": false,
+  "candidates": [
+    {
+      "entry_file": "candidates/imported/fullhouse_floorfix.py",
+      "sha256": "8d41454d6cafc10225ee474f807b9612dea8a73bd849dbf2ffd0d63a7c66c516",
+      "exit_code": 0,
+      "stdout": "PASS  size: 34881 bytes (limit 200000)\nPASS  imports: standard library only\nPASS  Agent: top-level class found\nPASS  load: imports and constructs Agent() under Python 3.12.10\nPASS  round (no_limit, 1000 hands): 1578 decisions, 0 errors, 0 timeouts (0.00%), 0 bank-outs, worst decision 1.7 ms, thinking 0.51 s\nPASS  round (pot_limit, 1000 hands): 1578 decisions, 0 errors, 0 timeouts (0.00%), 0 bank-outs, worst decision 1.1 ms, thinking 0.46 s\nPASS  round (fixed_limit, 1000 hands): 1846 decisions, 0 errors, 0 timeouts (0.00%), 0 bank-outs, worst decision 3.3 ms, thinking 0.67 s\nPASS  round (no_limit, raise cap 3, 1000 hands): 1600 decisions, 0 errors, 0 timeouts (0.00%), 0 bank-outs, worst decision 6.0 ms, thinking 0.78 s\nLimits: errors 0, timeouts at most 1% of decisions, at most 5 s thinking a round (bank 10 s).\nThis laptop is not the tournament sandbox (one CPU core, 512 MB, sealed container): timings here are a guide, not a guarantee.\ncandidates/imported/fullhouse_floorfix.py: all checks passed\n",
+      "stderr": ""
+    },
+    {
+      "entry_file": "candidates/imported/fullhouse_shark.py",
+      "sha256": "2d9aed30b745d398e27ab8ac5049781c1530fab1392623d8a7189d0598b69fb3",
+      "exit_code": 0,
+      "stdout": "PASS  size: 3684 bytes (limit 200000)\nPASS  imports: standard library only\nPASS  Agent: top-level class found\nPASS  load: imports and constructs Agent() under Python 3.12.10\nPASS  round (no_limit, 1000 hands): 1140 decisions, 0 errors, 0 timeouts (0.00%), 0 bank-outs, worst decision 1.1 ms, thinking 0.18 s\nPASS  round (pot_limit, 1000 hands): 1143 decisions, 0 errors, 0 timeouts (0.00%), 0 bank-outs, worst decision 0.5 ms, thinking 0.16 s\nPASS  round (fixed_limit, 1000 hands): 1256 decisions, 0 errors, 0 timeouts (0.00%), 0 bank-outs, worst decision 0.6 ms, thinking 0.18 s\nPASS  round (no_limit, raise cap 3, 1000 hands): 1164 decisions, 0 errors, 0 timeouts (0.00%), 0 bank-outs, worst decision 0.4 ms, thinking 0.16 s\nLimits: errors 0, timeouts at most 1% of decisions, at most 5 s thinking a round (bank 10 s).\nThis laptop is not the tournament sandbox (one CPU core, 512 MB, sealed container): timings here are a guide, not a guarantee.\ncandidates/imported/fullhouse_shark.py: all checks passed\n",
+      "stderr": ""
+    },
+    {
+      "entry_file": "candidates/imported/vivelev_monte_carlo.py",
+      "sha256": "dc79942d2be13a3d6bb10cc4824ca15f61f1ae473da6d758372b5b04cd00a8d3",
+      "exit_code": 0,
+      "stdout": "PASS  size: 6260 bytes (limit 200000)\nPASS  imports: standard library only\nPASS  Agent: top-level class found\nPASS  load: imports and constructs Agent() under Python 3.12.10\nPASS  round (no_limit, 1000 hands): 1105 decisions, 0 errors, 0 timeouts (0.00%), 0 bank-outs, worst decision 1.8 ms, thinking 0.63 s\nPASS  round (pot_limit, 1000 hands): 1094 decisions, 0 errors, 0 timeouts (0.00%), 0 bank-outs, worst decision 1.0 ms, thinking 0.62 s\nPASS  round (fixed_limit, 1000 hands): 1103 decisions, 0 errors, 0 timeouts (0.00%), 0 bank-outs, worst decision 5.1 ms, thinking 0.66 s\nPASS  round (no_limit, raise cap 3, 1000 hands): 1099 decisions, 0 errors, 0 timeouts (0.00%), 0 bank-outs, worst decision 4.9 ms, thinking 0.95 s\nLimits: errors 0, timeouts at most 1% of decisions, at most 5 s thinking a round (bank 10 s).\nThis laptop is not the tournament sandbox (one CPU core, 512 MB, sealed container): timings here are a guide, not a guarantee.\ncandidates/imported/vivelev_monte_carlo.py: all checks passed\n",
+      "stderr": ""
+    },
+    {
+      "entry_file": "candidates/imported/nucats_starter.py",
+      "sha256": "bd01e82f89ccb408523e96e6e9940c06b16202b71882091c6bd7346c9b09a298",
+      "exit_code": 0,
+      "stdout": "PASS  size: 5682 bytes (limit 200000)\nPASS  imports: standard library only\nPASS  Agent: top-level class found\nPASS  load: imports and constructs Agent() under Python 3.12.10\nPASS  round (no_limit, 1000 hands): 2469 decisions, 0 errors, 0 timeouts (0.00%), 0 bank-outs, worst decision 1.7 ms, thinking 0.41 s\nPASS  round (pot_limit, 1000 hands): 2365 decisions, 0 errors, 0 timeouts (0.00%), 0 bank-outs, worst decision 1.7 ms, thinking 0.39 s\nPASS  round (fixed_limit, 1000 hands): 3524 decisions, 0 errors, 1 timeouts (0.03%), 0 bank-outs, worst decision 4.3 ms, thinking 0.53 s\nPASS  round (no_limit, raise cap 3, 1000 hands): 2586 decisions, 0 errors, 0 timeouts (0.00%), 0 bank-outs, worst decision 1.2 ms, thinking 0.33 s\nLimits: errors 0, timeouts at most 1% of decisions, at most 5 s thinking a round (bank 10 s).\nThis laptop is not the tournament sandbox (one CPU core, 512 MB, sealed container): timings here are a guide, not a guarantee.\ncandidates/imported/nucats_starter.py: all checks passed\n",
+      "stderr": ""
+    },
+    {
+      "entry_file": "candidates/imported/devfun_textured.py",
+      "sha256": "88af4ca6c6962c6590a2beed68a4df5ca6143d95aa2131bec16ea3f762208b74",
+      "exit_code": 0,
+      "stdout": "PASS  size: 11098 bytes (limit 200000)\nPASS  imports: standard library only\nPASS  Agent: top-level class found\nPASS  load: imports and constructs Agent() under Python 3.12.10\nPASS  round (no_limit, 1000 hands): 1259 decisions, 0 errors, 0 timeouts (0.00%), 0 bank-outs, worst decision 0.6 ms, thinking 0.15 s\nPASS  round (pot_limit, 1000 hands): 1253 decisions, 0 errors, 0 timeouts (0.00%), 0 bank-outs, worst decision 0.5 ms, thinking 0.15 s\nPASS  round (fixed_limit, 1000 hands): 1321 decisions, 0 errors, 0 timeouts (0.00%), 0 bank-outs, worst decision 1.4 ms, thinking 0.19 s\nPASS  round (no_limit, raise cap 3, 1000 hands): 1238 decisions, 0 errors, 0 timeouts (0.00%), 0 bank-outs, worst decision 1.4 ms, thinking 0.25 s\nLimits: errors 0, timeouts at most 1% of decisions, at most 5 s thinking a round (bank 10 s).\nThis laptop is not the tournament sandbox (one CPU core, 512 MB, sealed container): timings here are a guide, not a guarantee.\ncandidates/imported/devfun_textured.py: all checks passed\n",
+      "stderr": ""
+    }
+  ],
+  "all_pass_d_gate": true
+}
