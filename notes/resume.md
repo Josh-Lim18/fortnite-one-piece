@@ -1,12 +1,13 @@
 # Resume note
 
-Updated Sat 14 Nov 2026, about 13:35 GMT. Workflow: `hackathon-build`. Read `SPEC.md` first.
+Updated Sat 14 Nov 2026, 13:25 GMT. Workflow: `hackathon-build`. Read `SPEC.md` first.
 
 ## Owner decisions
 
-- Every routine task (code, merges beyond one command, simulations, data) goes to an Opus agent (`model: "opus"`). Fable is for planning and orchestration only, and its turns are kept few: it was using too much of Owen's plan (Sat 13:10).
+- Every routine task (code, simulations, data) goes to an Opus agent (`model: "opus"`). Fable is for planning and orchestration only; Owen moved this orchestrator session to Opus 5.5 at 13:15 because Fable was using too much of his plan.
 - Enter the Best Use of Adaption prize as well as the poker track.
-- Nothing is pushed and no remote exists. A push and making the repo public (needed for Devpost by Sun 12:00) both need Owen's go-ahead.
+- Team repo: https://github.com/Josh-Lim18/fortnite-one-piece (public; Josh-Lim18 is team lead and owns every folder; Owen is `owenbonc`, a collaborator with write access and no area yet; its AGENTS.md says to ask the owner on the board, issue #1, before editing their folders). Owen's teammate's bot is the organisers' starter, unchanged.
+- Nothing is pushed and no remote is set. A push and making the repo public (needed for Devpost by Sun 12:00) both need Owen's go-ahead.
 
 ## State
 
@@ -20,9 +21,10 @@ Updated Sat 14 Nov 2026, about 13:35 GMT. Workflow: `hackathon-build`. Read `SPE
 |---|---|---|---|---|
 | Simulator and tuner | `notes/slice-sim.md` | Sonnet | merged | on main, verify READY |
 | Strategy (`bot.py`) | `notes/slice-strategy.md` | Opus | its own worktree | running |
-| Opponent pool and analyser | `notes/slice-opponents.md` | Fable (launched before the Opus rule) | its own worktree | running |
-| Preflop matchup table | `notes/slice-matchups.md` | Sonnet | its own worktree | running |
-| Adaption dataset | `notes/slice-adaption-data.md` | Opus | its own worktree | running |
+| Opponent pool and analyser | `notes/slice-opponents.md` | Fable | merged | on main |
+| Preflop matchup table | `notes/slice-matchups.md` | Sonnet | merged | on main; strategy agent told |
+| Adaption dataset | `notes/slice-adaption-data.md` | Opus | merged | on main; data in `adaption/data/` (gitignored), sent to Owen |
+| Bet-size reads, robust profiling | `notes/slice-reads.md` | Opus | not started | launch after strategy merges (same file) |
 | Adaption platform research | prompt only, read-only | Opus | none | reported; facts below |
 
 Merge rule: in the agent's worktree `git merge main`, run `scripts/verify.sh`, then `git merge --ff-only <branch>` on main. `git worktree list` shows the worktrees.
@@ -30,7 +32,7 @@ Merge rule: in the agent's worktree `git merge main`, run `scripts/verify.sh`, t
 ## Next steps
 
 1. Merge each slice as it reports.
-2. The strategy agent owns `bot.py` (`notes/slice-strategy.md`). When it reports, read its three comparisons, merge, and send `bot.py` to Owen to upload.
+2. After the strategy slice merges, launch `notes/slice-reads.md` on Opus. The strategy agent owns `bot.py` (`notes/slice-strategy.md`). When it reports, read its three comparisons, merge, and send `bot.py` to Owen to upload.
 3. Counted rounds run Sat 15:00–19:25; the Sat 19:20 upload plays Sunday's first rounds.
 4. When the token arrives: `python3 kit/fetch_hands.py --token ...`, run `tools/analyze.py hands/ --emit opponents/`, tune with `tools/tune.py`.
 5. Adaption: when the research and dataset agents report, convert the dataset to the platform's format and walk Owen through starting the fine-tune (he signs in and claims credits under My Pass on the event site).
@@ -51,3 +53,6 @@ Merge rule: in the agent's worktree `git merge main`, run `scripts/verify.sh`, t
 |---|---|---|---|
 | Simulator and tuner | Sonnet | 89k | reported in 5 min; `sim.py bot.py --rounds 16` gave +539 ± 43 bb/100 against house bots in 19 s; noted the pool may not be running in parallel |
 | Adaption research | Opus | 96k | reported in 4 min; facts above |
+| Opponent pool | Fable | 189k | 18 min; READY; local: bot +343, starter +711 over 2 rounds (noisy); clone postflop rough; real hand-file shape unverified |
+| Matchup table | Sonnet | 90k | 19 min; 20 KB table; AA range floor test moved to width 0.05 |
+| Adaption dataset | Opus | 119k | 12 min; 10,821 train + 1,179 eval rows, 18.7 MB; terse completions (action only) |
