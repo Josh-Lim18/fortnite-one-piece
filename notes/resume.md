@@ -2,7 +2,8 @@
 
 ## PAUSED Sat 14 Nov about 15:00 GMT: 5-hour usage limit
 
-- Running when paused: the layer 3 autopicker agent (`notes/slice-picker.md`), branch `worktree-agent-addff0dd05eab9c99`, worktree `.claude/worktrees/agent-addff0dd05eab9c99`. It was told to commit and report progress. Its report may not have reached anyone: on resume, read that branch's log and diff against `main` first.
+- Picker agent paused and reported (15:05): only the calibration fix is done, on `worktree-agent-addff0dd05eab9c99` (commits 02b8543, 16956ec), not merged and not verified (`model/test_model.py` and `scripts/verify.sh` not run). Temper 0.05 was the smallest value tried, so try lower. Calibration on held-out rounds: 0.35 stated vs 0.43 actual, 0.51 vs 0.56, 0.71 vs 0.65, 0.88 vs 0.84, 0.99 vs 1.00; two buckets miss the 0.05 target. Seats over 0.95 at 25/100/300 hands: 6% / 25% / 48%. Held-out log-loss 0.5350 tempered vs 0.5311 untempered vs 0.5446 before. The size bucket now marks facing a call of 800+ chips. Shover still never recognised. Not started: everything else in `notes/slice-picker.md`. Resume by relaunching the picker on Opus from that branch.
+- Running when paused (superseded by the line above): the layer 3 autopicker agent (`notes/slice-picker.md`), branch `worktree-agent-addff0dd05eab9c99`, worktree `.claude/worktrees/agent-addff0dd05eab9c99`. It was told to commit and report progress. Its report may not have reached anyone: on resume, read that branch's log and diff against `main` first.
 - The picker must include the overconfidence fix with a calibration table (stated top-type confidence within about 0.05 of the actual hit rate on held-out simulated rounds; held-out log-loss no worse). Owen asked for it.
 - Adaption data job launched 14:28 on Owen's account (dataset a8c739b1-2834-463e-afec-b1de538b8168), estimated ready about 16:55; Adaption emails Owen.
 - First steps on resume:
