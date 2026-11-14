@@ -1,3 +1,15 @@
+# Mechanics integration (current status)
+
+The bot now runs hand/draw and preflop analysis plus table state, pot odds, side-pot eligibility, lifecycle accounting and a random legal policy. The starter fallback is removed. All analysis is available on `agent.analysis`; existing card and preflop results are under `agent.analysis['extra']`. Replace `random_policy` to add strategy; retain `legalise_action`.
+
+Validated with Python 3.12: 35 analysis tests and 9 mechanics tests, 1,200 multi-format hands and two 1,000-hand official timed-runner rounds. Zero errors/timeouts/bank exhaustion; measured peak IPC decision 2.813ms before the compatibility-only starting_stack alias. Approximately 30.2KB. No preflop tables or competitive policy.
+
+Run `python candidates/improved/test_mechanics.py PATH_TO_KIT`. Existing tests use the `KIT` environment variable. Starting-stack-derived contributions are checked against the public pot; unavailable totals yield None. Side-pot thresholds assume no further betting and may require separate equity per pot. Positional order is not the pending-action queue.
+
+The historical integration notes below describe the analysis APIs; statements about a starter fallback are superseded by this section.
+
+---
+
 # Lane C: hand, draw and preflop analysis (integration note)
 
 **Status.** Hand/draw analysis and preflop analysis are complete and tested.
@@ -117,3 +129,4 @@ completion outs, **not** the chance of winning.
   decisions, all consistent with state. `analyze_preflop` mean 0.022 ms,
   max 0.41 ms. Kit `local_sim.py`, 3 × 1,000 hands: 0 timeouts, 0 errors,
   worst round 0.8 s of the 10 s bank.
+

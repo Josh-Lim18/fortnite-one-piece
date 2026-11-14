@@ -1,15 +1,5 @@
-"""Lane C bot: hand and draw analysis, with the starter strategy as a
-TEMPORARY FALLBACK policy.
-
-Status
-- Done: `analyze(hole_cards, board)` (made-hand and draw assessment) and
-  `analyze_preflop(state)` (hand category, position, preflop action).
-- Pending: the replacement betting strategy and preflop tables. Until those
-  are agreed, `select_action` runs the starter kit's rules unchanged.
-
-Platform contract (starter kit README): the platform imports `Agent`; a fresh
-Agent is created per table per round; act(state) has 10 ms including
-transport and a 10 s bank per 1,000-hand round. Standard library only.
+"""Hand, draw, preflop and game mechanics with a random legal policy.
+No strategic ranges or starter fallback rules. Standard library only.
 """
 import random
 from itertools import combinations
@@ -570,51 +560,156 @@ def analyze_preflop(state, starting_stack=None):
     return out
 
 
-# --- Action selection --------------------------------------------------------
 
-def select_action(state, analysis):
-    """TEMPORARY FALLBACK: the starter kit's rules, unchanged. `analysis` is
-    deliberately unused until the replacement strategy is agreed."""
-    return _starter_fallback(state)
+# --- Mechanics and random legal policy ---
+
+def pot_layers(contributions, folded):
+    """Snapshot layers, not final awards. Single-contributor excess is refundable."""
+    result = []
+    previous = 0
+    for level in sorted(set(contributions) - {0}):
+        payers = [i for i, c in enumerate(contributions) if c >= level]
+        result.append({
+            "cap": level, "amount": (level - previous) * len(payers),
+            "contributors": payers,
+            "eligible": [i for i in payers if not folded[i]],
+            "uncalled": len(payers) == 1,
+        })
+        previous = level
+    return result
 
 
-def _starter_fallback(state):
+def analyse_mechanics(state, starting_stacks=None):
+    seat = state["seat"]
+    stacks, bets, folded = state["stacks"], state["bets"], state["folded"]
+    n = len(stacks)
+    live = [i for i in range(n) if not folded[i]]
+    actors = [i for i in live if stacks[i] > 0]
+    # Positional order, not the engine's pending-action queue.
+    order = [(state["button"] + k) % n for k in range(1, n + 1)]
+    postflop_order = [i for i in order if i in actors]
+    call = state["to_call"]  # Already capped at our remaining stack by engine.
+    pot = state["pot"]
+    history = [dict(event) for event in state.get("history", [])]
+    street_history = [e for e in history if e["street"] == state["street"]]
+    contributions = layers = projected = eligible = equity = None
+    if starting_stacks is not None:
+        candidate = [a - b for a, b in zip(starting_stacks, stacks)]
+        if len(candidate) == n and min(candidate) >= 0 and sum(candidate) == pot:
+            contributions = candidate
+            layers = pot_layers(candidate, folded)
+            paid = list(candidate)
+            paid[seat] += call
+            projected = pot_layers(paid, folded)
+            eligible = sum(p["amount"] for p in projected
+                           if seat in p["eligible"] and not p["uncalled"])
+            equity = call / eligible if eligible else (0.0 if call == 0 else None)
+    return {
+        "hand_number": state["hand_number"], "street": state["street"],
+        "seat": seat, "button": state["button"], "num_players": n,
+        "hole_cards": list(state["hole_cards"]), "board": list(state["board"]),
+        "stacks": list(stacks), "street_bets": list(bets), "pot": pot,
+        "live_seats": live, "folded_seats": [i for i in range(n) if folded[i]],
+        "all_in_seats": [i for i in live if stacks[i] == 0],
+        "acting_seats": actors, "opponent_count": len(live) - int(seat in live),
+        "postflop_positional_order": postflop_order,
+        "last_to_act_positionally": bool(postflop_order and postflop_order[-1] == seat),
+        "current_actor": seat, "to_call": call,
+        "current_bet": max(bets),
+        "call_is_all_in": call > 0 and call == stacks[seat],
+        "effective_remaining_by_opponent": {
+            i: min(stacks[seat], stacks[i]) for i in live if i != seat},
+        "effective_street_total_by_opponent": {
+            i: min(stacks[seat] + bets[seat], stacks[i] + bets[i])
+            for i in live if i != seat},
+        "raw_pot_odds": call / (pot + call) if pot + call else 0.0,
+        "contributions": contributions, "pot_layers": layers,
+        "pot_layers_after_call": projected, "eligible_pot_after_call": eligible,
+        "call_equity_threshold": equity,
+        "pot_odds_note": "No-further-betting threshold; different side pots can have different equity.",
+        "legal_actions": list(state["legal_actions"]),
+        "can_raise": "raise" in state["legal_actions"],
+        "min_raise_to": state["min_raise_to"], "max_raise_to": state["max_raise_to"],
+        "betting": state.get("betting"), "raise_cap": state.get("raise_cap"),
+        "raises_this_street": state.get("raises_this_street"),
+        "history": history, "street_history": street_history,
+        "history_available": "history" in state,
+    }
+
+
+def legalise_action(state, proposed):
+    """Constrain a future policy's output to the authoritative engine bounds."""
     legal = state["legal_actions"]
-    hole = state["hole_cards"]
-    ranks = sorted("23456789TJQKA".index(c[0]) for c in hole)
-    strong = ranks[0] == ranks[1] or ranks[1] >= 11  # pocket pair, or K/A high
+    fallback = "check" if "check" in legal else "fold" if "fold" in legal else legal[0]
+    if not isinstance(proposed, dict):
+        return {"action": fallback}
+    action = proposed.get("action")
+    if action not in legal:
+        return {"action": fallback}
+    if action == "raise":
+        low, high = state["min_raise_to"], state["max_raise_to"]
+        if low is None or high is None or low > high:
+            return {"action": fallback}
+        amount = proposed.get("amount")
+        if type(amount) is not int:
+            amount = low
+        return {"action": "raise", "amount": max(low, min(high, amount))}
+    return {"action": action}
 
-    if strong and "raise" in legal:
-        target = state["min_raise_to"] + state["pot"] // 2
-        return {"action": "raise", "amount": min(target, state["max_raise_to"])}
-    if "check" in legal:
-        return {"action": "check"}
-    if state["to_call"] <= state["big_blind"] * 2 or strong:
-        return {"action": "call"}
-    return {"action": "fold"}
+
+def random_policy(state, analysis, rng):
+    """Uniform over canonical legal action types; uniform integer raise-to."""
+    action = rng.choice(state["legal_actions"])
+    if action == "raise":
+        return {"action": action, "amount": rng.randint(state["min_raise_to"], state["max_raise_to"])}
+    return {"action": action}
 
 
 class Agent:
-    def __init__(self):
-        self.rng = random.Random()
+    def __init__(self, seed=None):
+        self.rng = random.Random(seed)
+        self.table_info = {}
+        self.starting_stacks = None
+        self.hand_number = None
+        self.analysis = None
+        self.last_result = None
+        self.last_completed_hand = None
+        self.round_stats = {"hands": 0, "decisions": 0, "net_chips": 0}
 
     def on_table_start(self, info):
-        self.seat = info["seat"]
+        self.table_info = dict(info)
         self.starting_stack = info.get("starting_stack")
+        self.seat = info["seat"]
+        self.hand_number = self.analysis = self.last_result = self.last_completed_hand = None
+        self.round_stats = {"hands": 0, "decisions": 0, "net_chips": 0}
+        self.starting_stacks = [info["starting_stack"]] * info["num_players"]
+
+    def extra_analysis(self, state):
+        """Integration hook: inline Claude's card/draw/preflop functions here."""
+        cards = analyze(state["hole_cards"], state["board"])
+        cards["preflop"] = analyze_preflop(state, self.table_info.get("starting_stack"))
+        return cards
 
     def act(self, state):
-        # Analysis must never break a decision: failures become None.
-        try:
-            analysis = analyze(state["hole_cards"], state["board"])
-        except Exception:
-            analysis = None
-        if analysis is not None:
-            try:
-                analysis["preflop"] = analyze_preflop(
-                    state, getattr(self, "starting_stack", None))
-            except Exception:
-                analysis["preflop"] = None
-        return select_action(state, analysis)
+        if state["hand_number"] != self.hand_number:
+            self.hand_number = state["hand_number"]
+            self.analysis = None
+            if self.table_info.get("stacks_reset_each_hand"):
+                self.starting_stacks = [self.table_info["starting_stack"]] * len(state["stacks"])
+        self.analysis = analyse_mechanics(state, self.starting_stacks)
+        self.analysis["extra"] = self.extra_analysis(state)
+        self.round_stats["decisions"] += 1
+        return legalise_action(state, random_policy(state, self.analysis, self.rng))
 
     def on_hand_end(self, summary):
-        pass
+        if summary["hand_number"] == self.last_completed_hand:
+            return
+        self.last_completed_hand = summary["hand_number"]
+        self.round_stats["hands"] += 1
+        if self.starting_stacks is not None:
+            self.round_stats["net_chips"] += summary["stacks"][self.seat] - self.starting_stacks[self.seat]
+        self.last_result = {"hand_number": summary["hand_number"],
+                            "winners": summary["winners"], "stacks": list(summary["stacks"])}
+        if not self.table_info.get("stacks_reset_each_hand"):
+            self.starting_stacks = list(summary["stacks"])
+        self.analysis = None
