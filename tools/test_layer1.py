@@ -58,6 +58,28 @@ def _rejection_equity(hero, board, widths, samples, rng):
     return won / n
 
 
+def _range_equity_by_loop(i, width):
+    left = width * sum(bot.WEIGHTS)
+    total = eq = 0.0
+    for j, w in enumerate(bot.WEIGHTS):
+        w = min(w, left)
+        if w <= 0:
+            break
+        total += w
+        eq += w * bot.TABLE[i][j]
+        left -= w
+    return eq / total if total else 0.5
+
+
+def test_range_equity_lookups_match_the_class_by_class_sum():
+    rng = random.Random(4)
+    edges = [0.0, -0.1, 1e-9, 0.004, 0.005, 0.5, 1.0, 1.5]
+    for k in range(20_000):
+        i = rng.randrange(169)
+        w = edges[k] if k < len(edges) else rng.random() * 1.2
+        assert bot.range_equity(bot.TABLE, bot.WEIGHTS, i, w) == _range_equity_by_loop(i, w), (i, w)
+
+
 def test_equity_matches_rejection_sampling():
     hero, board, widths = _cards("Ks Qd"), _cards("Kh 7c 2d"), [0.15, 0.15]
     a = _agent(trials=3000, decision_ms=10_000, round_budget_s=1e9, round_stop_s=1e9)

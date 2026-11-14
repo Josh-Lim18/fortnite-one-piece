@@ -6,7 +6,7 @@ import base64
 import gc
 import random
 import time
-from bisect import bisect_right
+from bisect import bisect_left, bisect_right
 
 # Every tunable number lives here so tools/tune.py can search them.
 PARAMS = {
@@ -268,16 +268,15 @@ def decode(text):
 
 def range_equity(table, weights, i, width):
     """Equity of hand i against the best `width` share of all starting hands (weights: combos per class, ORDER order)."""
-    left = width * sum(weights)
-    total = eq = 0.0
-    for j, w in enumerate(weights):
-        w = min(w, left)
-        if w <= 0:
-            break
-        total += w
-        eq += w * table[i][j]
-        left -= w
-    return eq / total if total else 0.5
+    # Running totals of TABLE and WEIGHTS, built once at import; both callers pass those two.
+    cum, row = _CUM_W, _CUM_EQ[i]
+    left = width * cum[-1]
+    if left <= 0:
+        return 0.5
+    if left >= cum[-1]:
+        return row[-1] / cum[-1]
+    j = bisect_left(cum, left) - 1  # classes before j are fully in range, class j partly
+    return (row[j] + (left - cum[j]) * table[i][j]) / left
 
 
 def _build_pct():
@@ -317,6 +316,15 @@ STRAIGHT, TOP5 = _build_masks()
 DECK = list(range(52))
 TABLE = decode(MATCHUPS)
 WEIGHTS = [6 if n[0] == n[1] else 4 if n[2] == "s" else 12 for n in ORDER.split()]
+_CUM_W = [0.0]
+for _w in WEIGHTS:
+    _CUM_W.append(_CUM_W[-1] + _w)
+_CUM_EQ = []
+for _r in TABLE:
+    _acc = [0.0]
+    for _w, _e in zip(WEIGHTS, _r):
+        _acc.append(_acc[-1] + _w * _e)
+    _CUM_EQ.append(_acc)
 
 
 def card(text):
