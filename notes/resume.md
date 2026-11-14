@@ -2,6 +2,8 @@
 
 ## RESUMED Sat 15:20
 
+- 16:25: Owen chose Isaac's PC for training the poker bot (GPU for the equity network, CPU for tuning sims); Adaption is only for its prize. Equity network briefed (`notes/slice-equity-net.md`) and launched on Opus; the laptop proof runs first, then `equity_net/RUN_ON_GPU.md` for Isaac. Tuning waits for real hands (Owen: hands arrive once the bot is live). Need from Owen: Isaac's SSH host and consent, or Isaac runs the GPU commands himself.
+
 - 15:48: picker merged as tag `picker-1` (main). Three layers in bot.py (86 KB): profiler with k=9 personalities fitted from all dealt hands in sim, tempered (0.05; calibration 0.31→0.53 and 0.90→0.95 still miss), autopicker with value shove, bluff, multi-street plan, call shover, barreller. Passes check_submission (0 errors, worst 2.9 ms, ≤1 s a round). Against v2 on the same deals (24 rounds, bb/100): house −53 ± 38 (earlier run +11 ± 43), house+starter +19 ± 42, starter +7 ± 11, opponents −11 ± 8. Not better: upload stays v1. Ablation shows the exploits carry the value: base alone −253 vs house, −32 vs opponents. Gaps: preflop base unpriced, call-shover not tracked, multiway crude, untuned.
 - Owen's team had NO bot live at 15:28. v1 exported to ~/Downloads/poker-v1/bot.py (passes check); Owen to upload (or Josh) by 18:20 at the latest to reach 12 counted rounds. Message for Josh drafted in chat. `poker/bot` on GitHub still holds v0.
 
