@@ -76,8 +76,9 @@ def test_presses_a_seat_that_calls_everything():
     trained = _agent()
     for n in range(30):  # layer 2's tempered read needs about this many hands to be sure of a station
         trained.on_hand_end(_hand(n + 1, big=n % 3 == 0))
+    # Unopened, a shove wins only the blinds a normal raise wins too (SPEC, Strategy).
     move = trained.act(_preflop_state(hole))
-    assert _is_big(move), move
+    assert not _is_big(move), move
 
 
 def test_bet_sizes_jitter_within_ten_percent_and_stay_legal():

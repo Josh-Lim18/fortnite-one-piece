@@ -15,7 +15,7 @@ PARAMS = {
     "iso_raise": 0.12,         # big blind raises limpers with this share of hands
     "threebet_r": 0.30,        # re-raise when our hand is in this top share of the raiser's range
     "call_r": 0.85,            # call a raise when in this top share of the raiser's range
-    "call_cap": 0.22,          # ...but never wider than this share of all hands
+    "call_cap": 0.40,          # ...but never wider than this share of all hands
     "big_bet": 0.40,           # a bet this share of the starting stack counts as a shove
     "setmine_cost": 0.05,      # call with any pair when it costs at most this share of the stack
     "value": 0.62,             # bet when equity is above this
@@ -43,6 +43,7 @@ PARAMS = {
     "sticky_value": 0.52,      # value-bet threshold against a seat that never folds
     "sticky_allin": 0.70,      # get it all in postflop with this equity against a seat that never folds
     "trials": 40,              # Monte Carlo rollouts per postflop decision
+    "redraws": 12,             # deals tried per rollout to find opponent hands inside their ranges
     "decision_ms": 0.6,        # stop rolling out after this long
     "round_budget_s": 1.2,     # own thinking time after which rollouts are cut to a quarter
     "round_stop_s": 2.5,       # own thinking time after which only a handful of rollouts run: the tournament also counts transport
@@ -540,7 +541,7 @@ class Agent:
             if eq >= to_call / (state["pot"] + to_call) + p["allin_margin"] - p["risk"]:
                 return {"action": "all_in"}
             return self._passive(state)
-        if "raise" in state["legal_actions"] and self._value_edge(state, cls, raised, entered) >= p["value_edge"]:
+        if raises and "raise" in state["legal_actions"] and self._value_edge(state, cls, raised, entered) >= p["value_edge"]:
             return {"action": "raise", "amount": state["max_raise_to"]}
 
         if raises == 0:
@@ -676,21 +677,20 @@ class Agent:
         fixed = score(hero + board) if not missing else 0
         won = 0.0
         done = 0
-        for t in range(trials):
-            if not t & 7 and clock() > deadline:
+        for _ in range(trials):
+            if clock() > deadline:
                 break
-            draw = sample(deck, need)
-            ok = True
-            k = missing
-            for w in widths:
-                if w < 0.95 and hand_pct(draw[k], draw[k + 1]) > w:
-                    ok = False
+            for _ in range(p["redraws"]):
+                draw = sample(deck, need)
+                k = missing
+                for w in widths:
+                    if w < 0.95 and hand_pct(draw[k], draw[k + 1]) > w:
+                        break
+                    k += 2
+                else:
                     break
-                k += 2
-            if not ok:
-                # Outside a seat's range: keep one deal in four so the estimate never starves.
-                if t & 3:
-                    continue
+            else:
+                continue  # no deal inside every range: skip the trial rather than count an impossible one
             full = board + draw[:missing] if missing else board
             mine = score(hero + full) if missing else fixed
             best = 0
