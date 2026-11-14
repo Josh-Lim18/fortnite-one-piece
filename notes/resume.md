@@ -32,6 +32,7 @@ Updated Sat 14 Nov 2026, 13:25 GMT. Workflow: `hackathon-build`. Read `SPEC.md` 
 | Lane D: evaluation and tests in the team repo | `notes/slice-lane-d.md` | Opus | `team/` clone, branch `eval/benchmark` | running since 13:50 |
 | Cheap randomness | `notes/slice-randomness.md` | Opus | merged, tag `demo-2` | no measurable change: house +6 ± 19, house+starter +7 ± 20, starter −1 ± 7, opponents −7.6 ± 5.7, self-play −0.3 ± 3.3 (48 rounds); passes lane D check; upload recommendation stays `demo-1` until lane D judges |
 | Layer 2 opponent model | `notes/slice-model.md` | Opus | its own worktree, `model/` | running since 14:10 |
+| Layer 3 autopicker | `notes/slice-picker.md` | Opus | not started | launch when the layer 2 model merges; skill contract is in the Notion operating brief |
 | Adaptive pressure moves | `notes/slice-pressure.md` | Opus | parked | bot work is lane C's |
 | Adaption platform research | prompt only, read-only | Opus | none | reported; facts below |
 
