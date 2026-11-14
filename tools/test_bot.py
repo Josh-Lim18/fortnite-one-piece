@@ -18,9 +18,7 @@ class Strict(Bot):
     """The bot without act()'s safety net, so a bug shows as an engine error instead of a quiet check-fold."""
 
     def act(self, state):
-        if state["street"] == "preflop":
-            return self._preflop(state)
-        return self._postflop(state, time.perf_counter())
+        return self._decide(state, time.perf_counter())
 
 
 def _hand(n, big):
@@ -76,7 +74,7 @@ def test_presses_a_seat_that_calls_everything():
     fresh = _agent()
     assert not _is_big(fresh.act(_preflop_state(hole))), "raised big against an unknown seat"
     trained = _agent()
-    for n in range(15):
+    for n in range(30):  # layer 2's tempered read needs about this many hands to be sure of a station
         trained.on_hand_end(_hand(n + 1, big=n % 3 == 0))
     move = trained.act(_preflop_state(hole))
     assert _is_big(move), move
@@ -91,13 +89,81 @@ def test_bet_sizes_jitter_within_ten_percent_and_stay_legal():
     assert a._raise(state, 1500)["amount"] == 1930, "all-in jittered"
 
 
+def _flop_hand(n, reply):
+    """We raise preflop, seat 1 calls; on the flop it checks, we bet, and it plays `reply`."""
+    h = _hand(n, big=False)
+    h["history"][-1]["action"] = reply
+    h["history"][-1]["amount"] = 150 if reply == "call" else 0
+    return h
+
+
+def _trained(reply, hands=40, params=None):
+    a = _agent(params)
+    for n in range(hands):
+        a.on_hand_end(_flop_hand(n + 1, reply))
+    return a
+
+
 def test_bluffs_and_value_bets_share_a_size():
-    a = _agent({"size_jitter": 0.0, "mix_band": 0.0, "bluff_freq": 1.0})
-    a.seats[1].folds = 40  # a seat that folds to most bets gets bluffed
+    a = _trained("fold", params={"size_jitter": 0.0, "mix_band": 0.0, "prior_value_share": 0.0})  # base never bluffs; a seat that folds to bets gets bluffed
     value = Strict.act(a, _flop_state(["As", "Ah"], ["Ad", "7c", "2h"]))
     bluff = Strict.act(a, _flop_state(["6s", "3d"], ["Ad", "Kc", "Th"]))
+    assert a.stats.get("bluff") == 1, a.stats
     assert value["action"] == bluff["action"] == "raise", (value, bluff)
     assert value["amount"] == bluff["amount"], (value, bluff)
+
+
+def test_value_shoves_a_caller_and_never_bluffs_it():
+    a = _trained("call")
+    for _ in range(20):
+        assert _is_big(Strict.act(a, _flop_state(["As", "Ah"], ["Ad", "7c", "2h"])))
+    for _ in range(50):
+        Strict.act(a, _flop_state(["6s", "3d"], ["Ad", "Kc", "Th"]))
+    assert a.stats.get("value_shove", 0) >= 15 and not a.stats.get("bluff"), a.stats
+
+
+def test_plans_streets_against_a_seat_that_folds_only_to_big_bets():
+    a = _agent()
+    for n in range(40):
+        for street in (1, 2, 3):
+            for size in (1, 2):
+                a.model.observe(1, BOT.cell(street, size, 1), 1, n)
+            a.model.observe(1, BOT.cell(street, 4, 1), 0, n)
+    state = _flop_state(["As", "Ah"], ["Ad", "7c", "2h"])
+    moves = [Strict.act(a, state) for _ in range(20)]
+    target = BOT.ValuePlan.target(a, state)
+    assert all(m["action"] == "raise" and 0.85 * target <= m["amount"] <= 1.15 * target for m in moves), (target, moves)
+    assert a.stats.get("value_plan", 0) >= 15, a.stats
+
+
+def test_a_skill_switches_off_when_its_predicted_folds_stop():
+    a = _trained("fold")
+    state = _flop_state(["6s", "3d"], ["Ad", "Kc", "Th"])
+    seen = 0
+    for n in range(41, 61):
+        before = a.stats.get("bluff", 0)
+        move = Strict.act(a, state)
+        if a.stats.get("bluff", 0) == before:
+            continue
+        seen += 1
+        h = {"hand_number": n, "board": [], "shown": {}, "winners": [], "stacks": [2000, 2000],
+             "history": state["history"] + [{"seat": 0, "street": "flop", "action": "raise", "amount": move["amount"]},
+                                             {"seat": 1, "street": "flop", "action": "call", "amount": move["amount"]}]}
+        a.on_hand_end(h)
+    assert 1 <= seen <= a.p["track_min"], seen
+    assert ("bluff", 1) not in a.on
+
+
+def test_plays_base_with_no_evidence():
+    states = [_preflop_state(["Qs", "Jd"]), _preflop_state(["As", "Ah"]), _flop_state(["As", "Ah"], ["Ad", "7c", "2h"]),
+              _flop_state(["6s", "3d"], ["Ad", "Kc", "Th"]), _flop_state(["9s", "8s"], ["7s", "6d", "2s"])]
+    for seed in range(20):
+        full, base = _agent(), _agent({"picker": False})
+        full.rng.seed(seed)
+        base.rng.seed(seed)
+        for st in states:
+            assert Strict.act(full, st) == Strict.act(base, st), st
+        assert set(full.stats) <= {"no_skill"}, full.stats
 
 
 def test_mixes_only_near_a_threshold():
