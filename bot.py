@@ -6,6 +6,7 @@ import base64
 import gc
 import random
 import time
+from bisect import bisect_right
 
 # Every tunable number lives here so tools/tune.py can search them.
 PARAMS = {
@@ -43,7 +44,8 @@ PARAMS = {
     "sticky_value": 0.52,      # value-bet threshold against a seat that never folds
     "sticky_allin": 0.70,      # get it all in postflop with this equity against a seat that never folds
     "trials": 40,              # Monte Carlo rollouts per postflop decision
-    "redraws": 12,             # deals tried per rollout to find opponent hands inside their ranges
+    "redraws": 30,             # tries to deal every opponent a hand from its range with no card clash
+    "min_trials": 6,           # rollouts run before the deadline may stop them, so a late start never returns a blind 0.5
     "decision_ms": 0.6,        # stop rolling out after this long
     "round_budget_s": 1.2,     # own thinking time after which rollouts are cut to a quarter
     "round_stop_s": 2.5,       # own thinking time after which only a handful of rollouts run: the tournament also counts transport
@@ -323,6 +325,11 @@ def hand_pct(c1, c2):
 
 def hand_cls(c1, c2):
     return CLS[(c1 >> 2) * 26 + (c2 >> 2) * 2 + (1 if (c1 & 3) == (c2 & 3) else 0)]
+
+
+# Every two-card hand, strongest first, so the hands inside a range's top share are a prefix.
+COMBOS = sorted(((a, b) for a in range(52) for b in range(a + 1, 52)), key=lambda c: hand_pct(*c))
+COMBO_PCT = [hand_pct(a, b) for a, b in COMBOS]
 
 
 
@@ -672,34 +679,35 @@ class Agent:
         used.update(board)
         deck = [c for c in DECK if c not in used]
         missing = 5 - len(board)
-        need = missing + 2 * len(widths)
-        sample, clock = self.rng.sample, time.perf_counter
+        tops = [len(COMBOS) if w >= 0.95 else bisect_right(COMBO_PCT, w) for w in widths]
+        sample, rand, clock = self.rng.sample, self.rng.random, time.perf_counter
         fixed = score(hero + board) if not missing else 0
         won = 0.0
         done = 0
         for _ in range(trials):
-            if clock() > deadline:
+            if done >= p["min_trials"] and clock() > deadline:
                 break
+            # Opponents' hands first and together, then the runout from what is left: dealing the
+            # runout first would skew the deal toward runouts that block few in-range hands.
             for _ in range(p["redraws"]):
-                draw = sample(deck, need)
-                k = missing
-                for w in widths:
-                    if w < 0.95 and hand_pct(draw[k], draw[k + 1]) > w:
+                taken = set(used)
+                hands = []
+                for top in tops:
+                    if not top:
                         break
-                    k += 2
+                    a, b = COMBOS[int(rand() * top)]
+                    if a in taken or b in taken:
+                        break
+                    taken.add(a)
+                    taken.add(b)
+                    hands.append([a, b])
                 else:
                     break
             else:
-                continue  # no deal inside every range: skip the trial rather than count an impossible one
-            full = board + draw[:missing] if missing else board
+                continue
+            full = board + sample([c for c in deck if c not in taken], missing) if missing else board
             mine = score(hero + full) if missing else fixed
-            best = 0
-            k = missing
-            for _ in widths:
-                v = score(draw[k:k + 2] + full)
-                if v > best:
-                    best = v
-                k += 2
+            best = max((score(h + full) for h in hands), default=0)
             won += 1.0 if mine > best else 0.5 if mine == best else 0.0
             done += 1
         return won / done if done else 0.5
