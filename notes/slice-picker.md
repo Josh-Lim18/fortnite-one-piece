@@ -30,7 +30,7 @@ The design and the skill contract are in the team's Notion operating brief, "Lay
    - **Bluff:** bluff seats that fold too often.
 
    The randomness already in the bot (size jitter, mixing near thresholds, break-even default bluffs) stays in the base.
-3. Write the picker as above, with every threshold in `PARAMS`.
+3. Write the picker as above, with every threshold in `PARAMS`. Price every option (base and each skill that applies) by its expected chips under the opponent's full personality blend, never under its top personality alone. Choose by a softmax over those prices with a small temperature (a param): clear winners are picked almost always, and near-ties are mixed, so we stay hard to read. Never pick an option at random in proportion to the personality weights.
 4. Two more skills, against extreme opponents (Owen):
    - **Call the shover:** against a seat that goes all in far more often than its hand strength allows, call with every hand whose equity against its measured shoving range beats the price. Heads-up against any two cards, that is roughly the top 35–40% of hands. Never fold to it just because the bet is big.
    - **Let the barreller bet:** against a seat that bets every street, check strong and medium hands to it and call or raise its bets; never bluff it.
