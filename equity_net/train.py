@@ -116,7 +116,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--data", required=True)
     ap.add_argument("--out", required=True)
-    ap.add_argument("--epochs", type=int, default=40)
+    ap.add_argument("--epochs", type=int, default=150)
     ap.add_argument("--batch", type=int, default=1024)
     ap.add_argument("--lr", type=float, default=3e-3)
     a = ap.parse_args()

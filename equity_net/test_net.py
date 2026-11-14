@@ -31,17 +31,15 @@ def test_suit_renaming_and_card_order_never_change_features():
 
 def test_exported_weights_reproduce_pytorch_within_one_percent():
     rng = random.Random(2)
-    xs = [features.net_features(*gen_data.position(rng)) for _ in range(300)]
+    spots = [gen_data.position(rng) for _ in range(2000)]
+    x = torch.tensor([features.net_features(*s) for s in spots])
+    y = torch.tensor([gen_data.label(*s, 50, rng) for s in spots])
     for shape in train.SHAPES:
-        torch.manual_seed(len(shape) + shape[0])
-        model = train.mlp(shape)
+        model = train.fit(shape, x, y, 20, 256, 3e-3, "cpu")  # trained, so its weights look like the real ones
         with torch.no_grad():
-            for m in model:
-                if isinstance(m, torch.nn.Linear):
-                    m.weight.mul_(3.0)  # sharper outputs than the default init, so the check has teeth
-            ref = torch.softmax(model(torch.tensor(xs)), 1).tolist()
+            ref = torch.softmax(model(x[:300]), 1).tolist()
         layers = infer.net_load(train.export(train.quantise(model)[1]))
-        drift = max(abs(a - b) for x, r in zip(xs, ref) for a, b in zip(infer.net_forward(layers, x), r))
+        drift = max(abs(a - b) for xi, r in zip(x[:300].tolist(), ref) for a, b in zip(infer.net_forward(layers, xi), r))
         assert drift < 0.01, (shape, drift)
 
 
