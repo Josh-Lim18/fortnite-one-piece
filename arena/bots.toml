@@ -39,3 +39,19 @@ kwargs = { seed = 7 }
 [bots.example-json]
 type = "command"
 command = ["{python}", "examples/json_bot.py"]
+
+# ---- lane C research candidate (strategy tournament); NOT the live bot (that is v1-fast on poker/live) ----
+[bots.incumbent-vivelev]
+type = "agent"
+path = "../candidates/incumbent/bot.py"
+time_limit_ms = 10
+
+[bots.autopicker-lc]
+type = "agent"
+path = "../candidates/improved/autopicker_lc/bot.py"
+time_limit_ms = 10
+
+[bots.autopicker-lc-baseline]
+type = "agent"
+path = "../candidates/improved/autopicker_lc/bot_baseline.py"
+time_limit_ms = 10
