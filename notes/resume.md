@@ -7,7 +7,7 @@ Updated Sat 14 Nov 2026, 13:25 GMT. Workflow: `hackathon-build`. Read `SPEC.md` 
 - Every routine task (code, simulations, data) goes to an Opus agent (`model: "opus"`). Fable is for planning and orchestration only; Owen moved this orchestrator session to Opus 5.5 at 13:15 because Fable was using too much of his plan.
 - Enter the Best Use of Adaption prize as well as the poker track.
 - Team repo: https://github.com/Josh-Lim18/fortnite-one-piece (public; Josh-Lim18 is team lead and owns every folder; Owen is `owenbonc`, a collaborator with write access and no area yet; its AGENTS.md says to ask the owner on the board, issue #1, before editing their folders). Owen's teammate's bot is the organisers' starter, unchanged.
-- Nothing is pushed and no remote is set. A push and making the repo public (needed for Devpost by Sun 12:00) both need Owen's go-ahead.
+- `origin` is the team repo. Owen approved one push (Sat 13:30): `main` went to branch `poker/bot` at 38bf920. Its history is unrelated to the team repo's `main`, so a PR there needs Josh. Each further push or board post needs Owen's go-ahead. A push and making the repo public (needed for Devpost by Sun 12:00) both need Owen's go-ahead.
 
 ## State
 
