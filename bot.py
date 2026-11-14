@@ -4,10 +4,8 @@ One file, standard library only: the tournament sandbox loads nothing else.
 """
 import base64
 import gc
-import math
 import random
 import time
-from bisect import bisect_left, bisect_right
 
 # Every tunable number lives here so tools/tune.py can search them.
 PARAMS = {
@@ -22,43 +20,32 @@ PARAMS = {
     "setmine_cost": 0.05,      # call with any pair when it costs at most this share of the stack
     "value": 0.62,             # bet when equity is above this
     "big_value": 0.80,         # bet big / raise when equity is above this
-    "bet_frac": 0.66,          # the one postflop bet size, as a share of the pot, for value and bluffs alike
-    "size_jitter": 0.10,       # every chosen raise size is scaled by a random factor within this share
-    "mix_band": 0.03,          # within this distance of a threshold, mix the two actions with a sliding chance
+    "bet_frac": 0.66,
+    "big_bet_frac": 0.90,
     "call_margin": 0.06,       # equity needed beyond pot odds against a constant bettor
     "passive_margin": 0.16,    # extra equity needed against a seat that rarely bets
-    "prior_value_share": 0.40, # prior share of our bluff spots in which we hold a value bet; bluffs make calling us break-even
+    "bluff_fold_rate": 0.55,   # bluff heads-up only when the seat folds to bets this often
+    "bluff_freq": 0.60,
     "risk": 0.0,               # added to every stack-off threshold; raise it to chase variance
     "prior_hands": 12.0,       # how many hands of "average player" each seat's stats start with
     "prior_vpip": 0.30,
     "prior_pfr": 0.15,
     "prior_shove": 0.03,
     "prior_aggr": 0.30,
+    "prior_fold": 0.45,
+    # Exploiting seats that do not fold: these rates use a light prior so a station shows within ~15 hands.
+    "sticky_prior": 3.0,       # hands of prior behind the call-big-bet and fold-to-bet rates below
+    "prior_pfcall": 0.30,      # share of big preflop raises a seat continues against
+    "pf_big_bb": 3.0,          # a preflop raise to this many big blinds counts as a big bet
+    "value_edge": 0.12,        # preflop: raise to the max when its edge is this share of the raise
     "allin_margin": 0.03,      # call a preflop all-in with equity this far above the pot odds
-    # Layer 2 and the layer 3 picker.
-    "profile": True,           # off: layer 2 reads nothing per seat, only population rates
-    "temper": 0.05,            # weight of each observation in layer 2's type posterior
-    "picker": True,            # off: play base only
-    "pick_margin": 0.05,       # a skill is played only when its price beats base's by this share of the pot
-    "pick_temp": 0.02,         # softmax temperature over option prices, as a share of the pot
-    "value_edge": 0.12,        # preflop, base is unpriced: a value shove must gain this share of the raise when called
-    "z_conf": 1.0,             # a read's confidence is its mean less this many spreads over layer 2's type blend
-    "plan_trust": 0.9,         # chips the multi-street plan wins count at this share for each street after this one
-    "light_prior": 3.0,        # hands of prior behind the direct all-in and bet-when-checked-to counts
-    "prior_barrel": 0.35,      # prior chance a seat bets when checked to
-    "track_n": 6,              # a skill keeps its last this many predicted-versus-observed responses per seat
-    "track_min": 3,            # ...and needs this many before it can be switched off by them
-    "diverge": 0.35,           # switch a skill off for a seat when its predictions overshoot by this much on average
-    "track_hands": 150,        # misses older than this many hands are forgotten, so a skill can retry
-    # Each skill turns on for a seat when its confidence reaches _on and off when it drops below _off.
-    "value_shove_on": 0.45, "value_shove_off": 0.35,  # lower-bound chance the seat calls a stack-off
-    "value_plan_on": 0.50, "value_plan_off": 0.40,    # lower-bound chance it calls the plan's first bet
-    "bluff_on": 0.55, "bluff_off": 0.45,              # lower-bound chance it folds to our bet
-    "call_shover_on": 0.20, "call_shover_off": 0.12,  # lower-bound share of hands it goes all in
-    "barreller_on": 0.65, "barreller_off": 0.55,      # lower-bound chance it bets when checked to
-    "trials": 60,              # Monte Carlo rollouts per postflop decision
-    "decision_ms": 1.5,        # stop rolling out after this long
-    "round_budget_s": 3.0,     # own thinking time after which rollouts are cut to a quarter
+    "sticky_fold": 0.35,       # postflop fold-to-bet rate at and above which a seat gets no special treatment
+    "sticky_value": 0.52,      # value-bet threshold against a seat that never folds
+    "sticky_allin": 0.70,      # get it all in postflop with this equity against a seat that never folds
+    "trials": 40,              # Monte Carlo rollouts per postflop decision
+    "decision_ms": 0.6,        # stop rolling out after this long
+    "round_budget_s": 1.2,     # own thinking time after which rollouts are cut to a quarter
+    "round_stop_s": 2.5,       # own thinking time after which only a handful of rollouts run: the tournament also counts transport
 }
 
 RANKS = "23456789TJQKA"
@@ -392,332 +379,16 @@ def score(cards):
     return TOP5[mask]
 
 
-# ---- layer 2: opponent model, pasted from model/profiler.py and model/fitted.py
-# Layer 2 opponent model constants, written by model/fit.py from 905 seat-rounds of sim; k=9.
-FITTED = {"pop":[[0.0,0.774,0.226],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.457,0.314,0.228],[0.433,0.446,0.121],[0.26,0.395,0.345],[0.472,0.315,0.213],[0.607,0.22,0.173],[0.525,0.225,0.25],[0.333,0.333,0.333],[0.56,0.307,0.133],[0.628,0.163,0.209],[0.333,0.333,0.333],[0.726,0.274,0.0],[0.371,0.517,0.111],[0.0,0.615,0.385],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.306,0.614,0.08],[0.213,0.606,0.181],[0.333,0.333,0.333],[0.446,0.465,0.09],[0.334,0.503,0.163],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.185,0.705,0.111],[0.196,0.677,0.127],[0.0,0.667,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.104,0.84,0.056],[0.177,0.694,0.128],[0.333,0.333,0.333],[0.122,0.817,0.061],[0.232,0.538,0.23],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.064,0.877,0.059],[0.11,0.786,0.104],[0.0,0.685,0.315],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.106,0.858,0.037],[0.166,0.705,0.129],[0.333,0.333,0.333],[0.223,0.719,0.058],[0.327,0.465,0.208],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.036,0.942,0.021],[0.109,0.75,0.141]],"pop_m":[3.3,1.5,1.5,1.5,1.8,1.9,1.3,1.8,2.1,1.5,1.5,1.5,1.5,1.4,1.3,1.7,1.5,1.5,1.5,1.0,3.0,1.5,1.4,1.7,1.5,1.5,1.5,1.5,1.4,1.9,1.0,1.5,1.5,1.5,1.0,4.1,1.5,1.0,2.0,1.5,1.5,1.5,1.5,1.0,1.8,1.1,1.5,1.5,1.5,1.0,3.7,1.5,1.0,1.5,1.5,1.5,1.5,1.5,1.0,2.1],"type_prior":[0.096,0.09,0.084,0.096,0.285,0.083,0.088,0.095,0.083],"types":[[[0.001,0.624,0.375],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.001,0.648,0.351],[0.656,0.217,0.127],[0.105,0.263,0.632],[0.001,0.659,0.34],[0.712,0.031,0.257],[0.421,0.001,0.578],[0.333,0.333,0.333],[0.725,0.192,0.083],[0.682,0.09,0.227],[0.333,0.333,0.333],[0.763,0.236,0.001],[0.183,0.518,0.298],[0.001,0.622,0.377],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.571,0.241,0.187],[0.098,0.241,0.661],[0.333,0.333,0.333],[0.792,0.049,0.16],[0.44,0.008,0.552],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.044,0.549,0.407],[0.06,0.131,0.808],[0.001,0.639,0.36],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.426,0.351,0.223],[0.151,0.389,0.46],[0.333,0.333,0.333],[0.836,0.062,0.102],[0.555,0.04,0.405],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.002,0.456,0.543],[0.027,0.128,0.844],[0.001,0.643,0.356],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.566,0.398,0.035],[0.177,0.619,0.204],[0.333,0.333,0.333],[0.899,0.07,0.031],[0.919,0.043,0.038],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.002,0.72,0.278],[0.072,0.628,0.3]],[[0.001,0.998,0.001],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.001,0.998,0.001],[0.001,0.998,0.001],[0.001,0.998,0.001],[0.001,0.998,0.001],[0.001,0.998,0.001],[0.001,0.998,0.001],[0.333,0.333,0.333],[0.088,0.892,0.021],[0.449,0.402,0.15],[0.333,0.333,0.333],[0.001,0.998,0.001],[0.001,0.998,0.001],[0.001,0.998,0.001],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.001,0.998,0.001],[0.001,0.998,0.001],[0.333,0.333,0.333],[0.001,0.998,0.001],[0.001,0.998,0.001],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.001,0.998,0.001],[0.001,0.998,0.001],[0.001,0.998,0.001],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.001,0.998,0.001],[0.001,0.998,0.001],[0.333,0.333,0.333],[0.001,0.998,0.001],[0.007,0.986,0.007],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.001,0.998,0.001],[0.001,0.998,0.001],[0.001,0.998,0.001],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.001,0.998,0.001],[0.002,0.996,0.002],[0.333,0.333,0.333],[0.001,0.998,0.001],[0.016,0.974,0.01],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.001,0.998,0.001],[0.001,0.998,0.001]],[[0.001,0.285,0.714],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.001,0.288,0.711],[0.108,0.473,0.42],[0.32,0.293,0.387],[0.001,0.304,0.695],[0.106,0.24,0.654],[0.449,0.215,0.336],[0.333,0.333,0.333],[0.411,0.081,0.509],[0.523,0.136,0.341],[0.333,0.333,0.333],[0.435,0.564,0.001],[0.431,0.568,0.001],[0.001,0.001,0.998],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.264,0.448,0.287],[0.257,0.557,0.185],[0.333,0.333,0.333],[0.288,0.372,0.34],[0.298,0.369,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.264,0.469,0.267],[0.25,0.559,0.191],[0.001,0.001,0.998],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.165,0.62,0.215],[0.18,0.68,0.14],[0.333,0.333,0.333],[0.151,0.515,0.334],[0.128,0.441,0.431],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.173,0.62,0.207],[0.197,0.584,0.219],[0.001,0.001,0.998],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.141,0.666,0.193],[0.219,0.708,0.073],[0.333,0.333,0.333],[0.154,0.442,0.404],[0.347,0.424,0.229],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.147,0.704,0.149],[0.181,0.644,0.175]],[[0.001,0.873,0.126],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.667,0.214,0.118],[0.571,0.363,0.066],[0.452,0.016,0.532],[0.675,0.214,0.11],[0.729,0.166,0.105],[0.693,0.001,0.306],[0.333,0.333,0.333],[0.738,0.096,0.167],[0.734,0.116,0.15],[0.333,0.333,0.333],[0.998,0.001,0.001],[0.786,0.001,0.213],[0.001,0.595,0.404],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.771,0.228,0.001],[0.071,0.927,0.002],[0.333,0.333,0.333],[0.742,0.257,0.001],[0.282,0.713,0.006],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.679,0.319,0.002],[0.175,0.822,0.003],[0.001,0.47,0.529],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.666,0.001],[0.017,0.98,0.002],[0.333,0.333,0.333],[0.168,0.831,0.001],[0.072,0.916,0.012],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.028,0.97,0.002],[0.001,0.997,0.001],[0.001,0.442,0.557],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.236,0.763,0.001],[0.016,0.978,0.006],[0.333,0.333,0.333],[0.401,0.598,0.001],[0.271,0.705,0.024],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.022,0.977,0.001],[0.006,0.986,0.008]],[[0.001,0.878,0.121],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.802,0.001,0.197],[0.887,0.037,0.076],[0.701,0.157,0.141],[0.857,0.001,0.142],[0.88,0.036,0.084],[0.881,0.025,0.094],[0.333,0.333,0.333],[0.829,0.115,0.056],[0.682,0.09,0.227],[0.333,0.333,0.333],[0.92,0.079,0.001],[0.855,0.1,0.045],[0.001,0.564,0.435],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.767,0.195,0.037],[0.435,0.419,0.147],[0.333,0.333,0.333],[0.86,0.101,0.039],[0.649,0.252,0.099],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.863,0.077,0.06],[0.434,0.387,0.179],[0.001,0.726,0.273],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.439,0.498,0.063],[0.111,0.688,0.2],[0.333,0.333,0.333],[0.618,0.307,0.075],[0.443,0.358,0.199],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.193,0.697,0.11],[0.242,0.628,0.129],[0.001,0.7,0.299],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.717,0.225,0.058],[0.157,0.587,0.256],[0.333,0.333,0.333],[0.836,0.103,0.061],[0.342,0.157,0.501],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.389,0.536,0.075],[0.212,0.55,0.238]],[[0.001,0.497,0.502],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.329,0.332,0.339],[0.333,0.328,0.339],[0.374,0.38,0.246],[0.334,0.337,0.329],[0.333,0.337,0.33],[0.332,0.334,0.333],[0.333,0.333,0.333],[0.326,0.39,0.284],[0.628,0.163,0.209],[0.333,0.333,0.333],[0.499,0.5,0.001],[0.433,0.442,0.125],[0.001,0.499,0.5],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.359,0.359,0.282],[0.385,0.404,0.211],[0.333,0.333,0.333],[0.341,0.333,0.326],[0.326,0.332,0.342],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.436,0.421,0.142],[0.433,0.419,0.148],[0.001,0.493,0.506],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.386,0.35,0.264],[0.411,0.384,0.204],[0.333,0.333,0.333],[0.331,0.346,0.324],[0.374,0.351,0.275],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.431,0.419,0.15],[0.42,0.454,0.126],[0.001,0.501,0.498],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.347,0.408,0.245],[0.382,0.435,0.183],[0.333,0.333,0.333],[0.309,0.389,0.302],[0.411,0.354,0.235],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.437,0.414,0.148],[0.443,0.412,0.145]],[[0.001,0.998,0.001],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.746,0.253,0.001],[0.495,0.504,0.001],[0.563,0.436,0.001],[0.753,0.246,0.001],[0.725,0.274,0.001],[0.744,0.255,0.001],[0.333,0.333,0.333],[0.635,0.325,0.039],[0.628,0.163,0.209],[0.333,0.333,0.333],[0.953,0.046,0.001],[0.876,0.123,0.001],[0.001,0.998,0.001],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.492,0.507,0.001],[0.286,0.71,0.004],[0.333,0.333,0.333],[0.731,0.268,0.001],[0.802,0.196,0.002],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.345,0.653,0.002],[0.519,0.479,0.002],[0.001,0.998,0.001],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.108,0.891,0.001],[0.068,0.921,0.011],[0.333,0.333,0.333],[0.206,0.793,0.001],[0.557,0.403,0.04],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.044,0.955,0.001],[0.358,0.637,0.005],[0.001,0.759,0.24],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.183,0.685,0.132],[0.023,0.68,0.297],[0.333,0.333,0.333],[0.326,0.456,0.218],[0.31,0.144,0.546],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.081,0.827,0.092],[0.107,0.459,0.433]],[[0.001,0.838,0.161],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.718,0.127,0.156],[0.747,0.211,0.043],[0.166,0.631,0.203],[0.723,0.124,0.153],[0.787,0.155,0.057],[0.598,0.29,0.112],[0.333,0.333,0.333],[0.657,0.311,0.032],[0.714,0.181,0.105],[0.333,0.333,0.333],[0.792,0.207,0.001],[0.248,0.665,0.087],[0.001,0.728,0.271],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.649,0.335,0.016],[0.081,0.839,0.08],[0.333,0.333,0.333],[0.643,0.341,0.016],[0.323,0.577,0.1],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.638,0.353,0.009],[0.304,0.619,0.078],[0.001,0.632,0.367],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.182,0.762,0.056],[0.039,0.87,0.091],[0.333,0.333,0.333],[0.11,0.822,0.067],[0.06,0.589,0.351],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.023,0.937,0.04],[0.016,0.843,0.141],[0.001,0.622,0.377],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.233,0.693,0.073],[0.025,0.808,0.166],[0.333,0.333,0.333],[0.303,0.604,0.093],[0.162,0.569,0.269],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.119,0.844,0.036],[0.006,0.705,0.289]],[[0.001,0.658,0.341],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.001,0.654,0.345],[0.268,0.573,0.159],[0.17,0.2,0.63],[0.001,0.658,0.341],[0.634,0.053,0.313],[0.551,0.001,0.448],[0.333,0.333,0.333],[0.812,0.09,0.098],[0.591,0.116,0.292],[0.333,0.333,0.333],[0.773,0.226,0.001],[0.254,0.428,0.318],[0.001,0.483,0.516],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.659,0.232,0.109],[0.147,0.459,0.394],[0.333,0.333,0.333],[0.856,0.009,0.134],[0.823,0.003,0.174],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.001,0.638,0.361],[0.18,0.444,0.376],[0.001,0.133,0.866],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.355,0.351,0.294],[0.054,0.75,0.196],[0.333,0.333,0.333],[0.617,0.033,0.349],[0.347,0.044,0.609],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.001,0.592,0.407],[0.104,0.332,0.564],[0.001,0.185,0.814],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.47,0.429,0.101],[0.091,0.856,0.053],[0.333,0.333,0.333],[0.737,0.153,0.11],[0.313,0.129,0.558],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.011,0.748,0.242],[0.047,0.538,0.415]]],"type_m":[88.9,20.9,20.9,50.0,21.1,6.5,135.3,50.4,15.0,20.9,20.9,20.9,20.9,32.8,7.9,6.3,20.9,20.9,20.9,10.3,13.6,20.9,44.9,11.5,20.9,20.9,20.9,20.9,14.5,12.2,8.3,20.9,20.9,20.9,6.3,77.0,20.9,20.9,1000.0,20.9,20.9,20.9,20.9,16.2,1000.0,10.1,20.9,20.9,20.9,8.8,47.1,20.9,12.3,1000.0,20.9,20.9,20.9,20.9,25.1,21.9],"ranges":[[[[0.101,0.091,0.096,0.098,0.1,0.109,0.099,0.102,0.102,0.101],[0.0,0.0,0.0,0.0,0.066,0.077,0.145,0.213,0.211,0.288]],[[0.157,0.143,0.146,0.125,0.067,0.035,0.071,0.09,0.086,0.079],[0.0,0.0,0.002,0.05,0.151,0.232,0.143,0.099,0.106,0.218]],[[0.161,0.138,0.134,0.092,0.057,0.072,0.092,0.091,0.072,0.092],[0.001,0.004,0.034,0.122,0.179,0.138,0.099,0.092,0.15,0.181]],[[0.151,0.142,0.106,0.081,0.078,0.091,0.097,0.079,0.067,0.109],[0.004,0.03,0.088,0.141,0.141,0.091,0.082,0.115,0.163,0.144]]],[[[0.11,0.093,0.1,0.099,0.101,0.104,0.095,0.101,0.098,0.101],[0.11,0.093,0.1,0.099,0.101,0.104,0.095,0.101,0.098,0.101]],[[0.107,0.096,0.096,0.096,0.095,0.101,0.094,0.092,0.093,0.129],[0.107,0.096,0.096,0.096,0.095,0.101,0.094,0.092,0.093,0.129]],[[0.108,0.096,0.097,0.099,0.098,0.094,0.094,0.093,0.098,0.123],[0.108,0.096,0.097,0.099,0.098,0.094,0.094,0.093,0.098,0.123]],[[0.103,0.102,0.1,0.1,0.094,0.093,0.095,0.093,0.099,0.121],[0.103,0.102,0.1,0.1,0.094,0.093,0.095,0.093,0.099,0.121]]],[[[0.127,0.11,0.116,0.024,0.026,0.025,0.087,0.166,0.159,0.16],[0.0,0.0,0.0,0.139,0.141,0.141,0.132,0.148,0.146,0.153]],[[0.084,0.058,0.054,0.058,0.083,0.116,0.133,0.144,0.133,0.135],[0.081,0.074,0.077,0.083,0.097,0.117,0.096,0.087,0.104,0.183]],[[0.097,0.058,0.054,0.061,0.088,0.162,0.164,0.146,0.093,0.076],[0.102,0.09,0.085,0.09,0.095,0.101,0.093,0.094,0.106,0.143]],[[0.07,0.049,0.055,0.081,0.146,0.164,0.156,0.103,0.075,0.1],[0.11,0.093,0.092,0.098,0.101,0.095,0.094,0.096,0.098,0.124]]],[[[0.022,0.019,0.021,0.021,0.021,0.056,0.188,0.304,0.287,0.06],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.001,0.217,0.782]],[[0.025,0.032,0.056,0.095,0.139,0.171,0.092,0.078,0.116,0.197],[0.0,0.0,0.0,0.0,0.001,0.019,0.062,0.139,0.266,0.512]],[[0.033,0.044,0.083,0.143,0.153,0.108,0.08,0.087,0.12,0.149],[0.0,0.0,0.001,0.003,0.016,0.049,0.103,0.199,0.306,0.322]],[[0.05,0.077,0.145,0.145,0.121,0.077,0.073,0.087,0.092,0.134],[0.001,0.001,0.005,0.023,0.054,0.089,0.169,0.218,0.248,0.192]]],[[[0.063,0.054,0.056,0.061,0.063,0.06,0.06,0.065,0.134,0.385],[0.0,0.0,0.0,0.0,0.0,0.0,0.016,0.037,0.39,0.557]],[[0.094,0.083,0.075,0.086,0.09,0.12,0.105,0.111,0.113,0.124],[0.004,0.003,0.015,0.036,0.08,0.133,0.082,0.062,0.127,0.458]],[[0.074,0.068,0.083,0.109,0.128,0.128,0.118,0.125,0.104,0.061],[0.001,0.0,0.001,0.001,0.002,0.01,0.012,0.041,0.301,0.631]],[[0.08,0.091,0.113,0.122,0.126,0.129,0.109,0.116,0.074,0.04],[0.001,0.001,0.001,0.003,0.011,0.027,0.047,0.119,0.363,0.429]]],[[[0.107,0.094,0.103,0.101,0.099,0.102,0.095,0.098,0.101,0.1],[0.105,0.092,0.096,0.103,0.099,0.103,0.096,0.103,0.099,0.104]],[[0.102,0.094,0.1,0.094,0.1,0.101,0.095,0.093,0.094,0.128],[0.107,0.096,0.097,0.095,0.103,0.098,0.095,0.091,0.091,0.128]],[[0.103,0.101,0.1,0.098,0.1,0.096,0.096,0.096,0.095,0.114],[0.102,0.097,0.099,0.102,0.1,0.092,0.094,0.089,0.1,0.126]],[[0.1,0.099,0.098,0.095,0.104,0.092,0.091,0.094,0.103,0.124],[0.095,0.11,0.107,0.098,0.092,0.089,0.095,0.092,0.099,0.123]]],[[[0.012,0.011,0.011,0.014,0.011,0.012,0.012,0.159,0.34,0.417],[0.012,0.012,0.011,0.014,0.011,0.012,0.013,0.159,0.34,0.417]],[[0.015,0.014,0.023,0.041,0.077,0.099,0.07,0.077,0.131,0.452],[0.015,0.014,0.023,0.041,0.077,0.099,0.07,0.077,0.131,0.452]],[[0.015,0.018,0.033,0.06,0.077,0.069,0.069,0.096,0.226,0.337],[0.016,0.018,0.033,0.06,0.077,0.069,0.07,0.096,0.226,0.336]],[[0.022,0.036,0.055,0.075,0.075,0.088,0.113,0.17,0.275,0.091],[0.0,0.0,0.001,0.001,0.004,0.017,0.025,0.049,0.142,0.761]]],[[[0.016,0.012,0.015,0.015,0.015,0.015,0.015,0.131,0.507,0.259],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.169,0.831]],[[0.022,0.022,0.03,0.056,0.107,0.156,0.123,0.119,0.153,0.212],[0.002,0.002,0.002,0.008,0.011,0.02,0.021,0.057,0.134,0.743]],[[0.026,0.032,0.057,0.096,0.142,0.119,0.119,0.142,0.161,0.106],[0.004,0.002,0.005,0.014,0.023,0.028,0.042,0.07,0.287,0.526]],[[0.034,0.058,0.091,0.124,0.135,0.117,0.135,0.156,0.104,0.047],[0.0,0.001,0.001,0.009,0.022,0.053,0.071,0.148,0.311,0.385]]],[[[0.094,0.086,0.088,0.091,0.102,0.106,0.1,0.113,0.107,0.112],[0.0,0.0,0.0,0.0,0.066,0.078,0.148,0.21,0.211,0.287]],[[0.036,0.029,0.029,0.058,0.127,0.196,0.138,0.095,0.109,0.182],[0.0,0.0,0.003,0.045,0.152,0.232,0.144,0.095,0.108,0.221]],[[0.097,0.068,0.083,0.092,0.12,0.114,0.091,0.111,0.113,0.111],[0.0,0.005,0.041,0.107,0.196,0.148,0.081,0.088,0.153,0.182]],[[0.114,0.094,0.088,0.065,0.114,0.118,0.09,0.104,0.086,0.127],[0.003,0.023,0.073,0.154,0.141,0.109,0.066,0.112,0.159,0.16]]]],"share":[0.01254,0.0,0.0,0.05688,0.04992,0.04497,0.19186,0.13157,0.09627,0.0,9e-05,1e-05,0.0,0.02709,0.04907,0.08618,0.0,0.0,0.0,0.03039,0.00629,0.0,0.02612,0.00448,0.0,0.0,0.0,0.0,0.00831,0.00467,0.0599,0.0,0.0,0.0,0.01725,0.00187,0.0,0.00951,0.00042,0.0,0.0,0.0,0.0,0.00589,0.00177,0.04947,0.0,0.0,0.0,0.01229,0.00092,0.0,0.00411,0.00024,0.0,0.0,0.0,0.0,0.00893,0.00072],"bot_type":{"kit/examples/random_bot.py":5,"opponents/shover.py":4,"opponents/nit.py":4,"opponents/starter.py":0,"opponents/maniac.py":2,"opponents/equity_tag.py":4,"kit/examples/tight_aggressive.py":3,"kit/bot.py":0,"opponents/clone_base.py":7,"opponents/trapper.py":6,"kit/examples/calling_station.py":1}}
-
-STREETS = ("preflop", "flop", "turn", "river")
-ACTIONS = {"fold": 0, "check": 1, "call": 1, "raise": 2}  # check and call are both the passive "call"
-CELLS = 4 * 5 * 3  # street x bet-size bucket x raises this street (0, 1, 2+)
-BUCKETS = 10       # hand-strength buckets, 0 weakest
-HALF_LIFE = 150.0  # hands for an observation's weight to halve, so a change of style is re-read
-RANGE_M = 10.0     # a seat's own showdowns outweigh its type's range after this many
-SAMPLES = 40       # random hands a postflop hand is ranked against online
-BIG_CALL = 800     # a call this many chips (40% of the 2,000 stack every hand starts with) is a stack-off
-TEMPER = 0.05      # weight of each observation in the type posterior, fitted by evaluate.py --fit-temper
-
-
-def size_bucket(to_call, pot):
-    """The bet faced: 0 none, 4 a stack-off call; otherwise as a share of the pot (which holds the bet), 1 under
-    0.35, 2 to 0.8, 3 over."""
-    if to_call <= 0:
-        return 0
-    if to_call >= BIG_CALL:
-        return 4
-    x = to_call / pot
-    return 1 if x < 0.35 else 2 if x < 0.8 else 3
-
-
-def cell(street, size, raises):
-    return (street * 5 + size) * 3 + min(raises, 2)
-
-
-def decisions(history, n):
-    """Replay a hand's history (state["history"] format); yields (seat, street index, size bucket, raises
-    this street, players in, action index) for each fold, check, call or raise."""
-    bets, pot, street, raises, folded = [0] * n, 0, "preflop", 0, 0
-    for h in history:
-        seat, action, amount = h["seat"], h["action"], h["amount"]
-        if h["street"] != street:
-            street, bets, raises = h["street"], [0] * n, 0
-        if action in ("small_blind", "big_blind"):
-            bets[seat] += amount
-            pot += amount
-            continue
-        yield seat, STREETS.index(street), size_bucket(max(bets) - bets[seat], pot), raises, n - folded, ACTIONS[action]
-        if action == "raise":
-            pot += amount - bets[seat]
-            bets[seat] = amount
-            raises += 1
-        elif action == "call":
-            pot += amount
-            bets[seat] += amount
-        elif action == "fold":
-            folded += 1
-
-
-def showdown_buckets(shown, board, rng, samples):
-    """{seat: [bucket per street]} for shown hands: preflop percentile among starting hands, postflop the
-    percentile against `samples` random hands on that street's board."""
-    hole = {s: [card(c) for c in cs] for s, cs in shown.items()}
-    board = [card(c) for c in board]
-    out = {s: [min(BUCKETS - 1, int(BUCKETS * (1 - hand_pct(*h))))] for s, h in hole.items()}
-    used = set(board) | {c for h in hole.values() for c in h}
-    deck = [c for c in range(52) if c not in used]
-    for k in (3, 4, 5):
-        if len(board) < k:
-            break
-        b = board[:k]
-        ref = sorted(score(rng.sample(deck, 2) + b) for _ in range(samples))
-        for s, h in hole.items():
-            v = score(h + b)
-            pct = (bisect_left(ref, v) + bisect_right(ref, v)) / (2.0 * samples)
-            out[s].append(min(BUCKETS - 1, int(BUCKETS * pct)))
-    return out
-
-
-class Profiler:
-    def __init__(self, n, fitted, counts=True, types=True, temper=TEMPER):
-        """`counts` and `types` off give the weaker versions evaluate.py scores against."""
-        self.temper = temper
-        f = fitted
-        self.pop, self.pop_m, self.types_p, self.type_m = f["pop"], f["pop_m"], f["types"], f["type_m"]
-        self.prior = [math.log(w) for w in f["type_prior"]]
-        self.ranges = f["ranges"]
-        self.log_types = [[[math.log(max(p, 1e-3)) for p in c] for c in t] for t in f["types"]]
-        self.use_counts, self.use_types = counts, types
-        self.k = len(f["type_prior"])
-        self.hand = 0
-        self.counts = [[0.0] * (CELLS * 3) for _ in range(n)]
-        self.ll = [[0.0] * self.k for _ in range(n)]
-        self.shown = [[[[0.0] * BUCKETS for _ in range(2)] for _ in STREETS] for _ in range(n)]
-        self.rng = random.Random(0)
-
-    def observe(self, seat, situation, action, hand):
-        """One action (0 fold, 1 check or call, 2 raise) by `seat` in `situation` (a cell()) at hand number `hand`."""
-        self.hand = hand
-        w = 2.0 ** (hand / HALF_LIFE)  # stored weights grow instead of old ones shrinking; the ratio is the decay
-        self.counts[seat][situation * 3 + action] += w
-        ll = self.ll[seat]
-        for t in range(self.k):
-            ll[t] += w * self.log_types[t][situation][action]
-
-    def observe_showdown(self, seat, street, action, bucket):
-        """`seat` showed a hand in `bucket` after its last action (1 or 2) on `street`."""
-        self.shown[seat][street][action - 1][bucket] += 1
-
-    def observe_hand(self, summary, me=None):
-        """Feed one finished hand from on_hand_end's summary; `me` is our own seat, left out."""
-        hand, last = summary["hand_number"], {}
-        for seat, street, size, raises, _, action in decisions(summary["history"], len(self.counts)):
-            if seat != me:
-                self.observe(seat, cell(street, size, raises), action, hand)
-                last[seat, street] = action
-        shown = {int(s): c for s, c in summary["shown"].items() if int(s) != me}
-        if shown:
-            for seat, buckets in showdown_buckets(shown, summary["board"], self.rng, SAMPLES).items():
-                for street, b in enumerate(buckets):
-                    if last.get((seat, street), 0):
-                        self.observe_showdown(seat, street, last[seat, street], b)
-
-    def type_posterior(self, seat):
-        decay = self.temper * 2.0 ** (-self.hand / HALF_LIFE)
-        lp = [p + decay * l for p, l in zip(self.prior, self.ll[seat])]
-        top = max(lp)
-        w = [math.exp(x - top) for x in lp]
-        z = sum(w)
-        return [x / z for x in w]
-
-    def predict(self, seat, situation):
-        """(fold, call, raise) probabilities for `seat`'s next action in `situation`."""
-        if self.use_types:
-            w = self.type_posterior(seat)
-            mean = [sum(w[t] * self.types_p[t][situation][a] for t in range(self.k)) for a in (0, 1, 2)]
-            m = self.type_m[situation]
-        else:
-            mean, m = self.pop[situation], self.pop_m[situation]
-        if not self.use_counts:
-            z = sum(mean)
-            return tuple(p / z for p in mean)
-        decay = 2.0 ** (-self.hand / HALF_LIFE)
-        c = self.counts[seat]
-        i = situation * 3
-        n = [c[i] * decay, c[i + 1] * decay, c[i + 2] * decay]
-        z = sum(n) + m * sum(mean)
-        return tuple((n[a] + m * mean[a]) / z for a in (0, 1, 2))
-
-    def predict_types(self, seat, situation):
-        """[(weight, (fold, call, raise))]: predict() split by type, each type's rates blended with the seat's
-        own counts; their weighted mean is predict()."""
-        if not (self.use_types and self.use_counts):
-            return [(1.0, self.predict(seat, situation))]
-        w = self.type_posterior(seat)
-        m = self.type_m[situation]
-        decay = 2.0 ** (-self.hand / HALF_LIFE)
-        c = self.counts[seat]
-        i = situation * 3
-        n = (c[i] * decay, c[i + 1] * decay, c[i + 2] * decay)
-        out = []
-        for t in range(self.k):
-            tp = self.types_p[t][situation]
-            z = sum(n) + m * sum(tp)
-            out.append((w[t], tuple((n[a] + m * tp[a]) / z for a in (0, 1, 2))))
-        return out
-
-    def range(self, seat, street, action):
-        """Distribution over hand-strength buckets (0 weakest) of `seat`'s hand after `action` (1 or 2) on `street`."""
-        w = self.type_posterior(seat)
-        own = self.shown[seat][street][action - 1]
-        n = sum(own)
-        mix = [sum(w[t] * self.ranges[t][street][action - 1][b] for t in range(self.k)) for b in range(BUCKETS)]
-        z = n + RANGE_M * sum(mix)  # the fitted ranges are rounded, so sum(mix) is only near 1
-        return [(own[b] + RANGE_M * mix[b]) / z for b in range(BUCKETS)]
-
-
-# ------------------------------------------------------------------ layer 3: skills the picker can play
-FOLD, CONT, BET = 0, 1, 2  # the response a read is about: folds, continues (calls or raises), bets or raises
-
-
-class ValueShove:
-    """All in for value into seats that don't fold to a stack-off bet."""
-    name = "value_shove"
-
-    @staticmethod
-    def applies(bot, state):
-        """Preflop, the surest caller's lower-bound call chance; postflop with several players in, the least
-        sure one's, since every seat must be a non-folder. That seat is the one the skill is gated and tracked on."""
-        c = bot.ctx
-        c["shove_seat"] = -1
-        if "raise" not in state["legal_actions"] or not c["live"]:
-            return 0.0
-        if c["pre"]:
-            reads = {i: bot._read(i, cell(0, 4, c["raises"] + 1), CONT) for i in c["live"]}
-        else:
-            reads = {i: bot._read(i, bot._cell_for(state, state["max_raise_to"], i), CONT) for i in c["live"]}
-        c["shove_seat"] = (max if c["pre"] else min)(reads, key=lambda i: reads[i][1])
-        c["shove_read"] = reads[c["shove_seat"]]
-        return c["shove_read"][1]
-
-    @staticmethod
-    def move(bot, state, base):
-        c = bot.ctx
-        if not c["pre"] and base["action"] == "raise" and not c["value"]:  # base's bluff: a non-folder pays it off
-            return {"action": "check"} if state["to_call"] == 0 else None
-        return {"action": "raise", "amount": state["max_raise_to"]}
-
-    @staticmethod
-    def assumptions(bot, state):
-        c = bot.ctx
-        return [(c["shove_seat"], CONT, c["shove_read"][0])]
-
-
-class Bluff:
-    """Bet a hand base would check into a seat that folds to bets too often; never into a barreller."""
-    name = "bluff"
-
-    @staticmethod
-    def applies(bot, state):
-        c = bot.ctx
-        if c["pre"] or state["to_call"] or "raise" not in state["legal_actions"]:
-            return 0.0
-        if bot._barrel_read(c["j"], c["street"])[1] >= bot.p["barreller_off"]:
-            return 0.0
-        return bot._read(c["j"], bot._cell_for(state, bot._base_size(state)), FOLD)[1]
-
-    @staticmethod
-    def move(bot, state, base):
-        return bot._raise(state, bot._base_size(state))
-
-    @staticmethod
-    def assumptions(bot, state):
-        j = bot.ctx["j"]
-        return [(j, FOLD, bot._read(j, bot._cell_for(state, bot._base_size(state)), FOLD)[0])]
-
-
-class CallShover:
-    """Facing a stack-off bet from a seat that shoves far more hands than strength allows, call whenever
-    equity against its measured shoving range beats the price, however big the bet."""
-    name = "call_shover"
-
-    @staticmethod
-    def applies(bot, state):
-        c = bot.ctx
-        big = state["to_call"] >= 0.3 * bot.stack or max(state["bets"]) >= bot.p["big_bet"] * bot.stack
-        if c["j"] < 0 or not big:
-            return 0.0
-        if c["pre"]:  # equity against the top share of hands it shoves, each later caller holding as much
-            m = bot._shove_read(c["j"])[0]
-            c["eq_call"] = range_equity(TABLE, WEIGHTS, c["cls"], max(m, 0.02)) ** (1 + c["callers"])
-        return bot._shove_read(c["j"])[1]
-
-    @staticmethod
-    def move(bot, state, base):
-        return bot._call(state) if bot._price(state, {"action": "call"}) > 0 else None
-
-    @staticmethod
-    def assumptions(bot, state):
-        return []  # its read is the seat's own all-in count, which the next all-in updates
-
-
-class LetBarrellerBet:
-    """Against a seat that bets whenever checked to: check strong and medium hands to it, call or raise its
-    bets, never bluff it."""
-    name = "barreller"
-
-    @staticmethod
-    def applies(bot, state):
-        c = bot.ctx
-        if c["pre"] or not (c["after"] if state["to_call"] == 0 else c["bettor"] == c["j"]):
-            return 0.0
-        return bot._barrel_read(c["j"], c["street"])[1]
-
-    @staticmethod
-    def move(bot, state, base):
-        if state["to_call"] == 0:
-            return {"action": "check"} if bot._eq(1.0) > 0.5 or base["action"] == "raise" else None
-        if bot._eq(1.0) >= bot.p["big_value"] and "raise" in state["legal_actions"]:
-            return bot._raise(state, max(state["bets"]) + 0.75 * (state["pot"] + state["to_call"]))
-        return bot._call(state) if bot._price(state, {"action": "call"}) > 0 else None
-
-    @staticmethod
-    def assumptions(bot, state):
-        c = bot.ctx
-        return [(c["j"], BET, bot._barrel_read(c["j"], c["street"])[0])] if state["to_call"] == 0 else []
-
-
-class ValuePlan:
-    """With a hand base bets for value: the same pot fraction every street left, all in by the river."""
-    name = "value_plan"
-
-    @staticmethod
-    def applies(bot, state):
-        c = bot.ctx
-        if c["pre"] or state["to_call"] or not c["value"] or "raise" not in state["legal_actions"]:
-            return 0.0
-        return bot._read(c["j"], bot._cell_for(state, ValuePlan.target(bot, state)), CONT)[1]
-
-    @staticmethod
-    def frac(bot, state):
-        """f = (((P + 2S) / P) ^ (1 / n) - 1) / 2: betting f of the pot on each of n streets puts stack S in."""
-        c = bot.ctx
-        pot = max(state["pot"], 1)
-        return (((pot + 2.0 * c["stack"]) / pot) ** (1.0 / (4 - c["street"])) - 1.0) / 2.0
-
-    @staticmethod
-    def target(bot, state):
-        return max(state["bets"]) + ValuePlan.frac(bot, state) * state["pot"]
-
-    @staticmethod
-    def move(bot, state, base):
-        return bot._raise(state, ValuePlan.target(bot, state))
-
-    @staticmethod
-    def assumptions(bot, state):
-        j = bot.ctx["j"]
-        return [(j, CONT, bot._read(j, bot._cell_for(state, ValuePlan.target(bot, state)), CONT)[0])]
-
-
-SKILLS = (ValueShove, ValuePlan, Bluff, CallShover, LetBarrellerBet)
-
-
 class Seat:
-    """Per-hand counts the profiler lacks: how wide a seat plays preflop, and direct all-in and
-    bet-when-checked-to counts that read a shover or a barreller within a few hands."""
+    """Running counts of what one opponent does."""
 
-    __slots__ = ("hands", "vpip", "pfr", "shove", "checked", "barrel")
+    __slots__ = ("hands", "vpip", "pfr", "shove", "bets", "passive", "folds", "continues",
+                 "pf_faced", "pf_called", "shove_faced", "shove_called")
 
     def __init__(self):
-        self.hands = self.vpip = self.pfr = self.shove = self.checked = self.barrel = 0
+        self.hands = self.vpip = self.pfr = self.shove = 0
+        self.bets = self.passive = self.folds = self.continues = 0
+        self.pf_faced = self.pf_called = self.shove_faced = self.shove_called = 0
 
 
 class Agent:
@@ -725,305 +396,102 @@ class Agent:
         self.p = dict(PARAMS, **(params or {}))
         self.rng = random.Random()
         self.seats = []
-        self.me = 0
         self.stack = 2000
         self.bb = 20
         self.spent = 0.0
-        self.spots = self.spots_value = 0  # heads-up bluff spots seen, and those where we held a value bet
-        self.model = None
-        self.ctx = None
-        self.on = set()       # (skill, seat) pairs switched on; hysteresis keeps them on down to the off line
-        self.track = {}       # (skill, seat) -> [(hand, predicted minus observed response)], newest last
-        self.pending = []     # responses a played skill predicted this hand, checked in on_hand_end
-        self.hand = 0
-        self.stats = {}       # how often each option was played, plus "fallback" and "no_skill"
         gc.disable()  # a collection pause can blow the 10 ms limit
 
     def on_table_start(self, info):
-        n = info["num_players"]
-        self.seats = [Seat() for _ in range(n)]
-        self.me = info.get("seat", 0)
+        self.seats = [Seat() for _ in range(info["num_players"])]
         self.stack = info["starting_stack"]
         self.bb = info.get("big_blind", 20)
-        self.model = (Profiler(n, FITTED, temper=self.p["temper"]) if self.p["profile"]
-                      else Profiler(n, FITTED, counts=False, types=False))
 
     # ------------------------------------------------------------ profiling
     def _rate(self, count, total, prior, k=None):
         k = self.p["prior_hands"] if k is None else k
         return (count + prior * k) / (total + k)
 
+    def _pf_call(self, s):
+        """Chance a seat calls a preflop all-in: its rate against all-ins, starting from its rate against big raises."""
+        k = self.p["sticky_prior"]
+        big = self._rate(s.pf_called, s.pf_faced, self.p["prior_pfcall"], k)
+        return self._rate(s.shove_called, s.shove_faced, big, k)
+
+    def _fold_fast(self, s):
+        return self._rate(s.folds, s.folds + s.continues, self.p["prior_fold"], self.p["sticky_prior"])
+
+    def _sticky(self, s):
+        """0 for a seat that folds to bets normally, 1 for one that never folds."""
+        return max(0.0, 1.0 - self._fold_fast(s) / self.p["sticky_fold"])
+
     def _seat(self, i):
         while len(self.seats) <= i:
             self.seats.append(Seat())
         return self.seats[i]
 
-    def _read(self, seat, situation, kind):
-        """(mean, lower bound) of the chance `seat` folds, continues or raises in `situation`, over the blend of
-        types layer 2 thinks it may be; the bound is the mean less z_conf spreads, so a thin read is low."""
-        blend = self.model.predict_types(seat, situation)
-        vals = [(w, p[0] if kind == FOLD else 1.0 - p[0] if kind == CONT else p[2]) for w, p in blend]
-        m = sum(w * v for w, v in vals)
-        sd = math.sqrt(max(0.0, sum(w * (v - m) ** 2 for w, v in vals)))
-        return m, m - self.p["z_conf"] * sd
-
-    def _direct(self, count, total, prior):
-        """(mean, lower bound) of a per-seat rate under a light prior, so an extreme seat shows in a few hands."""
-        k = self.p["light_prior"]
-        m = (count + prior * k) / (total + k)
-        return m, m - self.p["z_conf"] * math.sqrt(m * (1.0 - m) / (total + k + 1.0))
-
-    def _shove_read(self, i):
-        s = self._seat(i)
-        return self._direct(s.shove, s.hands, self.p["prior_shove"])
-
-    def _barrel_read(self, i, street):
-        s = self._seat(i)
-        return max(self._direct(s.barrel, s.checked, self.p["prior_barrel"]),
-                   self._read(i, cell(street, 0, 0), BET), key=lambda r: r[1])
-
     def on_hand_end(self, summary):
         big = self.p["big_bet"] * self.stack
         entered, raised, shoved = set(), set(), set()
         street, bet_open = "preflop", False
+        pf_big = self.p["pf_big_bb"] * self.bb
+        put, top = {}, 0
         for h in summary["history"]:
             a, i = h["action"], h["seat"]
             if h["street"] != street:
                 street, bet_open = h["street"], False
             if a in ("small_blind", "big_blind"):
+                put[i] = h["amount"]
+                top = max(top, h["amount"])
                 continue
             s = self._seat(i)
-            if a == "raise" and h["amount"] >= big:
-                shoved.add(i)
             if street == "preflop":
+                if top >= pf_big and put.get(i, 0) < top:
+                    s.pf_faced += 1
+                    s.pf_called += a != "fold"
+                    if top >= big:
+                        s.shove_faced += 1
+                        s.shove_called += a != "fold"
+                if a == "raise":
+                    put[i] = top = max(top, h["amount"])
+                elif a == "call":
+                    put[i] = put.get(i, 0) + h["amount"]
                 if a in ("call", "raise"):
                     entered.add(i)
                 if a == "raise":
                     raised.add(i)
+                    if h["amount"] >= big:
+                        shoved.add(i)
                 continue
-            if not bet_open:
-                s.checked += 1
-                s.barrel += a == "raise"
+            if bet_open:
+                if a == "fold":
+                    s.folds += 1
+                else:
+                    s.continues += 1
             if a == "raise":
+                s.bets += 1
                 bet_open = True
+            elif a in ("check", "call"):
+                s.passive += 1
         for i in range(len(summary["stacks"])):
             s = self._seat(i)
             s.hands += 1
             s.vpip += i in entered
             s.pfr += i in raised
             s.shove += i in shoved
-        if self.model is not None:
-            self.model.observe_hand(summary, self.me)
-        self._check_predictions(summary)
-
-    def _check_predictions(self, summary):
-        """Score each response a played skill predicted against the seat's next action after ours."""
-        hist, n = summary["history"], summary["hand_number"]
-        for name, seat, kind, pred, start in self.pending:
-            a = next((h["action"] for h in hist[start + 1:] if h["seat"] == seat), None)
-            if a is None:
-                continue
-            obs = a == "fold" if kind == FOLD else a != "fold" if kind == CONT else a == "raise"
-            t = self.track.setdefault((name, seat), [])
-            t.append((n, pred - obs))
-            del t[:-self.p["track_n"]]
-        self.pending = []
-
-    def _diverged(self, key):
-        """A skill's predicted responses stopped happening: their recent misses average past `diverge`."""
-        misses = [m for h, m in self.track.get(key, ()) if self.hand - h <= self.p["track_hands"]]
-        return len(misses) >= self.p["track_min"] and sum(misses) / len(misses) > self.p["diverge"]
-
-    def _gate(self, name, seat, conf):
-        key = (name, seat)
-        if self._diverged(key):
-            self.on.discard(key)
-        elif key in self.on:
-            if conf < self.p[name + "_off"]:
-                self.on.discard(key)
-        elif conf >= self.p[name + "_on"]:
-            self.on.add(key)
-        return key in self.on
 
     # --------------------------------------------------------------- acting
     def act(self, state):
         t0 = time.perf_counter()
         try:
-            move = self._decide(state, t0)
+            if state["street"] == "preflop":
+                move = self._preflop(state)
+            else:
+                move = self._postflop(state, t0)
         except Exception:
             move = self._passive(state)
         self.spent += time.perf_counter() - t0
         return move
 
-    def _decide(self, state, t0):
-        self.hand = state["hand_number"]
-        base = self._preflop(state) if state["street"] == "preflop" else self._postflop(state, t0)
-        return self._pick(state, base) if self.p["picker"] else base
-
-    def _count(self, key):
-        self.stats[key] = self.stats.get(key, 0) + 1
-
-    def _pick(self, state, base):
-        """Price base and every skill that applies under layer 2's blend; play a skill only when it beats base by
-        pick_margin of the pot, choosing among those by a softmax so near-ties mix."""
-        c = self.ctx
-        p = self.p
-        me = state["seat"]
-        c["live"] = [i for i, f in enumerate(state["folded"]) if not f and i != me]
-        c["raises"] = state["raises_this_street"]
-        c["street"] = STREETS.index(state["street"])
-        c["multi"] = not c["pre"] and len(c["live"]) > 1  # only the value shove covers a pot of several players
-        if c["pre"]:
-            c["j"] = c["raiser"]
-        elif not c["multi"]:
-            j = c["j"] = c["live"][0]
-            c["after"] = not any(h["seat"] == j and h["street"] == state["street"] for h in state["history"])
-            c["stack"] = min(state["stacks"][me], state["stacks"][j])
-        c["eq_call"] = None
-        opts = []
-        for sk in SKILLS:
-            if c["multi"] and sk is not ValueShove:
-                continue
-            conf = sk.applies(self, state)
-            if not self._gate(sk.name, c["shove_seat"] if sk is ValueShove else c["j"], conf):
-                continue
-            mv = sk.move(self, state, base)
-            sized = sk in (ValueShove, ValuePlan) and mv is not None and mv.get("amount") != base.get("amount")
-            if mv is not None and (mv["action"] != base["action"] or sized):
-                opts.append((sk, mv))
-        if not opts:
-            self._count("no_skill")
-            return base
-        pot = max(state["pot"], 1)
-        bp = self._price(state, base)
-        priced = [(None, base, bp)]
-        for sk, mv in opts:
-            if sk is ValueShove and c["pre"]:
-                raise_by = state["max_raise_to"] - state["bets"][me]
-                pr, bar = raise_by * self._value_edge(state), raise_by * p["value_edge"]
-            else:
-                pr, bar = self._price(state, mv, sk is ValuePlan), bp + p["pick_margin"] * pot
-            if pr > bar:
-                priced.append((sk, mv, pr))
-        best = max(pr for _, _, pr in priced)
-        temp = p["pick_temp"] * pot
-        w = [math.exp((pr - best) / temp) for _, _, pr in priced]
-        x = self.rng.random() * sum(w)
-        for (sk, mv, _), wi in zip(priced, w):
-            x -= wi
-            if x <= 0:
-                break
-        if sk is None:
-            self._count("fallback")
-            return base
-        self._count(sk.name)
-        for seat, kind, pred in sk.assumptions(self, state):
-            self.pending.append((sk.name, seat, kind, pred, len(state["history"]) - 1))
-        return mv
-
-    # ------------------------------------------------------------- pricing
-    def _cell_for(self, state, target, j=None):
-        """The situation seat `j` (by default the heads-up opponent) faces after we raise to `target`."""
-        j = self.ctx["j"] if j is None else j
-        me = state["seat"]
-        target = min(target, state["bets"][j] + state["stacks"][j])
-        x = target - state["bets"][me]
-        return cell(STREETS.index(state["street"]), size_bucket(target - state["bets"][j], state["pot"] + x),
-                    state["raises_this_street"] + 1)
-
-    def _base_size(self, state):
-        return max(state["bets"]) + self.p["bet_frac"] * state["pot"]
-
-    def _eq(self, share):
-        """Heads-up equity against the strongest `share` of the opponent's current range, from one rollout."""
-        c = self.ctx
-        if "curve" not in c:
-            c["curve"] = self._curve(c["hero"], c["board"], c["widths"][0], time.perf_counter())
-        curve = c["curve"]
-        if not curve:
-            return 0.5
-        k = max(1, int(round(share * len(curve))))
-        return sum(curve[:k]) / k
-
-    def _price(self, state, move, plan=False):
-        """Expected chips we end the hand with from the pot, less chips we add from now, if we play `move`."""
-        c, p = self.ctx, self.p
-        a, pot, owe = move["action"], state["pot"], state["to_call"]
-        if a == "fold":
-            return 0.0
-        if c["pre"]:  # preflop only calls are priced; raises are base's reference point
-            if a == "call" or (a in ("raise", "all_in") and owe >= 0.3 * self.stack):
-                eq = c["eq_call"] if c["eq_call"] is not None else 0.5
-                return eq * (pot + owe) - owe
-            return 0.0
-        if c["multi"]:
-            return self._multi_price(state, move)
-        if a == "check":
-            eq = self._eq(1.0)
-            if not c["after"]:
-                return eq * pot
-            b = self._barrel_read(c["j"], c["street"])[0]
-            bet = p["bet_frac"] * pot  # what it bets, as we would
-            return (1.0 - b) * eq * pot + b * max(0.0, eq * (pot + 2.0 * bet) - bet)
-        if a == "call":
-            return self._eq(1.0) * (pot + owe) - owe
-        j, me = c["j"], state["seat"]
-        target = state["max_raise_to"] if a == "all_in" else move["amount"]
-        if plan:
-            return self._plan_price(state, target)
-        target = min(target, state["bets"][j] + state["stacks"][j])
-        x, y = target - state["bets"][me], target - state["bets"][j]
-        blend = self.model.predict_types(j, self._cell_for(state, target))
-        return sum(w * (f * pot + (1.0 - f) * (self._eq(1.0 - f) * (pot + x + y) - x)) for w, (f, _, _) in blend)
-
-    def _multi_price(self, state, move):
-        """With several players in: each seat continues at layer 2's rate for what it faces, independently, and
-        our equity against k of them is the per-seat share of base's multiway equity to the power k."""
-        c = self.ctx
-        a, pot, owe, bets, me = move["action"], state["pot"], state["to_call"], state["bets"], state["seat"]
-        eq = c["eq"]
-        if a == "check":
-            return eq * pot
-        if a == "call":
-            return eq * (pot + owe) - owe
-        target = state["max_raise_to"] if a == "all_in" else move["amount"]
-        x = target - bets[me]
-        each = eq ** (1.0 / len(c["live"]))
-        dp, put, n = [1.0], 0.0, 0.0  # dp[k]: chance k seats continue; put, n: expected chips they add, and seats
-        for i in c["live"]:
-            y = min(target, bets[i] + state["stacks"][i]) - bets[i]
-            go = 1.0 - self._read(i, self._cell_for(state, target, i), FOLD)[0]
-            put, n = put + go * y, n + go
-            dp = [(dp[k] if k < len(dp) else 0.0) * (1.0 - go) + (dp[k - 1] * go if k else 0.0) for k in range(len(dp) + 1)]
-        y = put / n if n else 0.0
-        return dp[0] * pot + sum(dp[k] * (each ** k * (pot + x + k * y) - x) for k in range(1, len(dp)))
-
-    def _plan_price(self, state, first):
-        """The geometric plan over the streets left, under each type in the blend: each street the seat continues
-        at its rate for that size and its range narrows by it; chips won after this street count at plan_trust."""
-        c, p = self.ctx, self.p
-        st = c["street"]
-        frac = (first - max(state["bets"])) / max(state["pot"], 1)
-        pot, inv, steps = float(state["pot"]), 0.0, []
-        for k in range(4 - st):  # the sizes are fixed by the plan, so each street's situation is too
-            bet = max(0.0, min(frac * pot, c["stack"] - inv))
-            sit = cell(st + k, size_bucket(bet, pot + bet), (state["raises_this_street"] if k == 0 else 0) + 1)
-            steps.append((pot, inv, self.model.predict_types(c["j"], sit)))
-            pot += 2.0 * bet
-            inv += bet
-        total = 0.0
-        for t, (wt, _) in enumerate(steps[0][2]):
-            reach, ev, trust = 1.0, 0.0, 1.0
-            for pk, ik, blend in steps:
-                f = blend[t][1][0]
-                ev += trust * reach * f * (pk - ik)
-                reach *= 1.0 - f
-                trust *= p["plan_trust"]
-            ev += trust / p["plan_trust"] * reach * (self._eq(reach) * pot - inv)
-            total += wt * ev
-        return total
-
-    # ------------------------------------------------------------------ base
     @staticmethod
     def _passive(state):
         return {"action": "check" if "check" in state["legal_actions"] else "fold"}
@@ -1039,16 +507,7 @@ class Agent:
         target = int(target)
         if target >= 0.6 * hi:
             target = hi  # past this point a fold later is never right, so commit now
-        elif target > lo:
-            j = self.p["size_jitter"]  # stops other bots fingerprinting us by a sizing formula
-            target = int(target * (1.0 + self.rng.uniform(-j, j)))
         return {"action": "raise", "amount": max(lo, min(target, hi))}
-
-    def _over(self, x, line):
-        """x >= line, except within mix_band of the line, where the chance slides linearly from 0 to 1."""
-        band = self.p["mix_band"]
-        d = x - line
-        return d >= band or (d > -band and self.rng.random() < (d + band) / (2.0 * band))
 
     def _preflop(self, state):
         p = self.p
@@ -1074,33 +533,33 @@ class Agent:
                     limpers += 1
 
         cls = hand_cls(c1, c2)
-        self.ctx = {"pre": True, "cls": cls, "raised": raised, "entered": entered, "raiser": raiser,
-                    "callers": callers_of_raise, "value": False, "bettor": raiser}
         committed = raises and (top_bet >= p["big_bet"] * self.stack or to_call >= 0.3 * self.stack)
         if committed:
             # Equity against the raiser's estimated range (and each caller holding the same) against the pot odds.
             eq = range_equity(TABLE, WEIGHTS, cls, self._raise_width(raiser, raises, top_bet)) ** (1 + callers_of_raise)
-            if self._over(eq, to_call / (state["pot"] + to_call) + p["allin_margin"] - p["risk"]):
+            if eq >= to_call / (state["pot"] + to_call) + p["allin_margin"] - p["risk"]:
                 return {"action": "all_in"}
             return self._passive(state)
+        if "raise" in state["legal_actions"] and self._value_edge(state, cls, raised, entered) >= p["value_edge"]:
+            return {"action": "raise", "amount": state["max_raise_to"]}
 
         if raises == 0:
             behind = (state["button"] - me) % n
             behind = 1 if behind == n - 1 else 0 if behind == n - 2 else behind + 2
             limit = p["iso_raise"] if behind == 0 else p["open"].get(behind, 0.12)
-            if self._over(limit, pct):
+            if pct <= limit:
                 return self._raise(state, (p["open_bb"] + limpers) * bb)
             return self._passive(state)
 
         width = self._raise_width(raiser, raises, top_bet)
         depth = pct / width  # 0 = top of the raiser's range, 1 = its bottom
         crowd = 0.7 ** callers_of_raise  # callers behind a raise hold real hands too
-        if self._over(p["threebet_r"] * crowd, depth):
+        if depth <= p["threebet_r"] * crowd:
             return self._raise(state, top_bet * 3 + to_call * callers_of_raise)
         cheap = to_call <= p["setmine_cost"] * self.stack
         if cheap and (c1 >> 2) == (c2 >> 2):
             return self._call(state)
-        if to_call <= 0.08 * self.stack and self._over(min(p["call_r"] * width, p["call_cap"]), pct):
+        if to_call <= 0.08 * self.stack and pct <= min(p["call_r"] * width, p["call_cap"]):
             return self._call(state)
         return self._passive(state)
 
@@ -1118,27 +577,30 @@ class Agent:
             width = pfr
         return max(width, 0.02)
 
-    def _value_edge(self, state):
-        """Expected gain of raising to the max, per chip raised, if it is called: each live seat calls a stack-off
-        at layer 2's rate with that top share of what it holds; multiway equity is the product of heads-up ones."""
-        p, c = self.p, self.ctx
+    def _value_edge(self, state, cls, raised, entered):
+        """Expected gain of raising to the max, per chip raised, if it is called: each live seat calls at its
+        call-big-bet rate with that top share of what it holds; multiway equity is the product of heads-up ones."""
+        p = self.p
+        me = state["seat"]
         dp, q = [1.0], [1.0]  # by number of callers: sum of P(callers) * equity, and P(callers)
-        for i in c["live"]:
+        for i, f in enumerate(state["folded"]):
+            if f or i == me:
+                continue
             s = self._seat(i)
-            call = self._read(i, cell(0, 4, c["raises"] + 1), CONT)[0]
-            if i in c["raised"]:
+            c = self._pf_call(s)
+            if i in raised:
                 held = self._rate(s.pfr, s.hands, p["prior_pfr"])
-            elif i in c["entered"]:
+            elif i in entered:
                 held = self._rate(s.vpip, s.hands, p["prior_vpip"])
             else:
                 held = 1.0
-            e = range_equity(TABLE, WEIGHTS, c["cls"], max(0.02, call * held))
+            e = range_equity(TABLE, WEIGHTS, cls, max(0.02, c * held))
             ndp, nq = [0.0] * (len(dp) + 1), [0.0] * (len(q) + 1)
             for k in range(len(dp)):
-                ndp[k] += dp[k] * (1.0 - call)
-                ndp[k + 1] += dp[k] * call * e
-                nq[k] += q[k] * (1.0 - call)
-                nq[k + 1] += q[k] * call
+                ndp[k] += dp[k] * (1.0 - c)
+                ndp[k + 1] += dp[k] * c * e
+                nq[k] += q[k] * (1.0 - c)
+                nq[k + 1] += q[k] * c
             dp, q = ndp, nq
         return sum(dp[k] * (k + 1) for k in range(1, len(dp))) - (1.0 - q[0])
 
@@ -1168,41 +630,42 @@ class Agent:
             else:
                 widths.append(max(self._rate(s.vpip, s.hands, p["prior_vpip"]), 0.15))
         eq = self._equity(hero, board, widths, t0)
-        self.ctx = {"pre": False, "hero": hero, "board": board, "widths": widths, "bettor": bettor, "value": False,
-                    "eq": eq}
 
         if to_call == 0:
-            frac = p["bet_frac"]  # one size for value and bluffs alike
-            spot = len(live) == 1 and me in raised_pre
-            self.spots += spot
-            if self._over(eq, p["value"]):
-                self.spots_value += spot
-                self.ctx["value"] = True
+            # A seat that never folds pays off thinner value and bigger bets, and is never bluffed.
+            sticky = max(self._sticky(self._seat(i)) for i in live) if live else 0.0
+            frac = p["bet_frac"] + sticky * (1.0 - p["bet_frac"])
+            if sticky >= 0.5 and eq >= p["sticky_allin"] and "raise" in state["legal_actions"]:
+                return {"action": "raise", "amount": state["max_raise_to"]}
+            if eq >= p["big_value"]:
+                return self._raise(state, max(bets) + max(p["big_bet_frac"], frac) * pot)
+            if eq >= p["value"] - sticky * (p["value"] - p["sticky_value"]):
                 return self._raise(state, max(bets) + frac * pot)
-            if spot:
-                # Break-even mix: bluffs / bets = B / (P + 2B), given how often our bets here are value.
-                f = frac / (1.0 + 2.0 * frac)
-                v = min(self._rate(self.spots_value, self.spots, p["prior_value_share"]), 0.95)
-                if self.rng.random() < f * v / ((1.0 - f) * (1.0 - v)):
+            if len(live) == 1 and me in raised_pre and sticky == 0.0:
+                s = self._seat(live[0])
+                fold_rate = self._rate(s.folds, s.folds + s.continues, p["prior_fold"])
+                if fold_rate >= p["bluff_fold_rate"] and self.rng.random() < p["bluff_freq"]:
                     return self._raise(state, max(bets) + frac * pot)
             return self._passive(state)
 
         odds = to_call / (pot + to_call)
-        street = STREETS.index(state["street"])
-        aggr = self.model.predict(bettor, cell(street, 0, 0))[2] if bettor >= 0 else p["prior_aggr"]
+        s = self._seat(bettor) if bettor >= 0 else Seat()
+        if (bettor >= 0 and self._sticky(s) >= 0.5 and eq >= p["sticky_allin"]
+                and "raise" in state["legal_actions"]):
+            return {"action": "raise", "amount": state["max_raise_to"]}
+        aggr = self._rate(s.bets, s.bets + s.passive, p["prior_aggr"])
         size = min(1.0, to_call / max(pot - to_call, 1))
         need = odds + p["call_margin"] + p["passive_margin"] * (1.0 - aggr) * size
-        if self._over(eq, p["big_value"] + 0.5 * p["passive_margin"] * (1.0 - aggr)):
-            self.ctx["value"] = True
+        if eq >= p["big_value"] + 0.5 * p["passive_margin"] * (1.0 - aggr):
             return self._raise(state, max(bets) + 0.75 * (pot + to_call))
-        if self._over(eq, need - p["risk"]):
+        if eq >= need - p["risk"]:
             return self._call(state)
         return self._passive(state)
 
     def _equity(self, hero, board, widths, t0):
         """Chance of winning at showdown against one hand per width, each drawn from that top share."""
         p = self.p
-        trials = p["trials"] if self.spent < p["round_budget_s"] else p["trials"] // 4
+        trials = p["trials"] if self.spent < p["round_budget_s"] else p["trials"] // 4 if self.spent < p["round_stop_s"] else 6
         deadline = t0 + p["decision_ms"] / 1000.0
         used = set(hero)
         used.update(board)
@@ -1240,29 +703,3 @@ class Agent:
             won += 1.0 if mine > best else 0.5 if mine == best else 0.0
             done += 1
         return won / done if done else 0.5
-
-    def _curve(self, hero, board, width, t0):
-        """Heads-up showdown results against hands from the top `width` share, strongest on the current board
-        first, so the mean of the first c share is our equity against the part of its range that continues."""
-        p = self.p
-        trials = p["trials"] if self.spent < p["round_budget_s"] else p["trials"] // 4
-        deadline = t0 + p["decision_ms"] / 1000.0
-        used = set(hero)
-        used.update(board)
-        deck = [c for c in DECK if c not in used]
-        missing = 5 - len(board)
-        sample, clock = self.rng.sample, time.perf_counter
-        out = []
-        for t in range(trials):
-            if not t & 7 and clock() > deadline:
-                break
-            for _ in range(12):  # a hand from its range, giving up after a few misses so a thin range never starves
-                draw = sample(deck, missing + 2)
-                if width >= 0.95 or hand_pct(draw[missing], draw[missing + 1]) <= width:
-                    break
-            opp = draw[missing:]
-            full = board + draw[:missing]
-            mine, theirs = score(hero + full), score(opp + full)
-            out.append((score(opp + board), 1.0 if mine > theirs else 0.5 if mine == theirs else 0.0))
-        out.sort(reverse=True)
-        return [w for _, w in out]
