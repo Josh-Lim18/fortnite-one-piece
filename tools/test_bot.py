@@ -9,6 +9,7 @@ from engine import FixedHandsTable  # noqa: E402
 from engine.players import LocalPlayer  # noqa: E402
 
 Bot = sim.load(os.path.join(sim.ROOT, "bot.py"))
+BOT = sys.modules[Bot.__module__]
 Baseline = sim.load(os.path.join(sim.ROOT, "tools", "baseline_bot.py"))
 EX = os.path.join(sim.ROOT, "kit", "examples")
 POOL = [sim.load(os.path.join(EX, f)) for f in sorted(os.listdir(EX)) if f.endswith(".py")]
@@ -138,6 +139,50 @@ def test_thinking_per_hand_stays_within_budget():
         ours += thinking(Bot, 250, seed)
     assert ours <= 1.5 * base, (ours, base)
     print("thinking: %.3f s vs baseline %.3f s over 1000 hands, ratio %.2f" % (ours, base, ours / base))
+
+
+HERO, FLOP = [BOT.card("As"), BOT.card("Kd")], [BOT.card(c) for c in ("Qs", "7h", "2c")]
+
+
+def _rollouts(spent, hand, params=None):
+    """Rollouts one flop equity estimate runs after `spent` s of thinking by hand `hand`, and the estimate."""
+    a = _agent(params)
+    a.spent, a.hand = spent, hand
+    calls = [0]
+    sample = a.rng.sample
+
+    def counted(*args):
+        calls[0] += 1
+        return sample(*args)
+
+    a.rng.sample = counted
+    eq = a._equity(HERO, FLOP, [0.5], time.perf_counter() + 1.0)  # t0 ahead, so the decision deadline never cuts it
+    return calls[0], eq
+
+
+def test_governor_steps_down_from_the_network_as_thinking_runs_ahead_of_pace():
+    p = Bot().p
+    pace = p["round_target_s"] * 100 / 1000  # by hand 100 of 1,000
+    win, tie, _ = BOT.net_forward(BOT.NET, BOT.net_features(HERO, FLOP, [0.5]))
+    assert _rollouts(0.0, 99) == (0, win + 0.5 * tie)
+    assert _rollouts(1.1 * pace, 99)[0] == 0
+    assert _rollouts(1.3 * pace, 99)[0] == p["slow_trials"]
+    assert _rollouts(1.6 * pace, 99)[0] == p["slower_trials"]
+    assert _rollouts(p["round_stop_s"], 999)[0] == p["stop_trials"]
+    assert _rollouts(0.0, 99, {"equity_net": False})[0] == p["trials"]
+
+
+def test_every_governor_step_plays_clean():
+    forced = {1: {"round_target_s": 1e-9, "slower_pace": 1e9}, 2: {"round_target_s": 1e-9}, 3: {"round_stop_s": 0.0}}
+    for step, params in forced.items():
+        class Forced(Strict):
+            def __init__(self, _=None, params=params):
+                Strict.__init__(self, params)
+
+        players = [LocalPlayer(Forced)] + [LocalPlayer(POOL[i % len(POOL)]) for i in range(5)]
+        FixedHandsTable(players, hands=150, seed=12).play()
+        assert players[0].stats.errors == 0, (params, players[0].stats.error_samples[:1])
+        assert players[0].agent._governor() == step, params
 
 
 def test_other_structures_play_clean():
