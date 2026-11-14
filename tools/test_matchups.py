@@ -29,7 +29,7 @@ between(table[ix("72o")][ix("AA")], 0.10, 0.14)
 for i in range(169):
     for j in range(169):
         assert abs(table[i][j] + table[j][i] - 1) < 0.005
-for w in (0.03, 0.1, 0.25, 0.55, 1.0):
+for w in (0.05, 0.1, 0.25, 0.55, 1.0):  # top 3% is mostly AA/KK/QQ: true equity 0.77
     assert range_equity(table, weights, ix("AA"), w) > 0.8
 assert range_equity(table, weights, ix("72o"), 0.05) < 0.25
 print("matchups ok")
