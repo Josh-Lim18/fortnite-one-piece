@@ -4,6 +4,7 @@ One file, standard library only: the tournament sandbox loads nothing else.
 """
 import base64
 import gc
+import math
 import random
 import time
 
@@ -42,6 +43,13 @@ PARAMS = {
     "sticky_fold": 0.35,       # postflop fold-to-bet rate at and above which a seat gets no special treatment
     "sticky_value": 0.52,      # value-bet threshold against a seat that never folds
     "sticky_allin": 0.70,      # get it all in postflop with this equity against a seat that never folds
+    # Layer 2: every count above is read as the seat's own decayed counts plus its personality mixture's rate.
+    "half_life": 150.0,        # hands for an observation's weight to halve, so a change of style is re-read
+    "temper": 0.05,            # weight of each action in the personality posterior (model/'s TEMPER)
+    "type_w": 6.0,             # most observations a personality mixture counts for in any read: real-round calibration is poor at the top
+    "type_e": 30.0,            # observed actions at which the mixture gets half that weight
+    "shown_prior": 3.0,        # showdowns of a seat whose raises mean strength, behind the random-or-strategic read
+    "random_gap": 0.5,         # raises read as fully random once the shown raise-call strength gap falls to this share of a strategic seat's
     "trials": 40,              # Monte Carlo rollouts per postflop decision
     "decision_ms": 0.6,        # stop rolling out after this long
     "round_budget_s": 1.2,     # own thinking time after which rollouts are cut to a quarter
@@ -311,6 +319,50 @@ DECK = list(range(52))
 TABLE = decode(MATCHUPS)
 WEIGHTS = [6 if n[0] == n[1] else 4 if n[2] == "s" else 12 for n in ORDER.split()]
 
+# Layer 2 personalities, fitted by model/fit.py on real and simulated rounds (main c816533, k=5). TYPES[t][cell] is
+# type t's chance to (fold, call or check, raise) in a situation cell = (street * 5 + size) * 3 + min(raises, 2):
+# size 0 no bet faced, 4 a call of the big_bet share of the stack, else the call as a share of the pot holding it,
+# 1 under 0.35, 2 to 0.8, 3 over. SHARE[cell] is how often each cell comes up.
+TYPE_PRIOR = [0.4, 0.115, 0.27, 0.049, 0.166]
+TYPES = [
+    [[0.001,0.815,0.184],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.646,0.086,0.268],[0.687,0.256,0.057],[0.542,0.125,0.333],[0.753,0.044,0.204],[0.807,0.119,0.074],[0.789,0.067,0.144],[0.333,0.333,0.333],[0.898,0.029,0.073],[0.828,0.086,0.086],[0.333,0.333,0.333],[0.964,0.035,0.001],[0.797,0.09,0.114],[0.001,0.474,0.525],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.521,0.402,0.077],[0.193,0.75,0.057],[0.333,0.333,0.333],[0.628,0.308,0.064],[0.419,0.463,0.118],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.702,0.283,0.015],[0.36,0.529,0.112],[0.001,0.519,0.48],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.313,0.604,0.083],[0.078,0.868,0.054],[0.333,0.333,0.333],[0.461,0.464,0.075],[0.37,0.522,0.108],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.389,0.544,0.067],[0.192,0.781,0.028],[0.001,0.547,0.452],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.393,0.53,0.077],[0.067,0.873,0.06],[0.333,0.333,0.333],[0.58,0.355,0.065],[0.52,0.305,0.175],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.302,0.65,0.048],[0.231,0.731,0.038]],
+    [[0.001,0.407,0.592],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.188,0.317,0.495],[0.227,0.41,0.363],[0.349,0.35,0.301],[0.172,0.323,0.506],[0.222,0.288,0.49],[0.407,0.265,0.328],[0.333,0.333,0.333],[0.434,0.133,0.433],[0.546,0.144,0.31],[0.333,0.333,0.333],[0.449,0.55,0.001],[0.43,0.519,0.051],[0.001,0.235,0.764],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.317,0.402,0.281],[0.312,0.512,0.177],[0.333,0.333,0.333],[0.316,0.349,0.335],[0.303,0.356,0.341],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.329,0.42,0.251],[0.345,0.488,0.168],[0.001,0.288,0.711],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.299,0.459,0.242],[0.317,0.51,0.173],[0.333,0.333,0.333],[0.232,0.442,0.327],[0.316,0.336,0.348],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.324,0.499,0.177],[0.313,0.505,0.182],[0.001,0.323,0.676],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.253,0.503,0.244],[0.324,0.528,0.148],[0.333,0.333,0.333],[0.243,0.4,0.357],[0.443,0.348,0.209],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.285,0.558,0.158],[0.304,0.552,0.143]],
+    [[0.001,0.876,0.123],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.757,0.123,0.12],[0.658,0.295,0.047],[0.345,0.495,0.16],[0.78,0.098,0.122],[0.79,0.15,0.059],[0.704,0.209,0.087],[0.333,0.333,0.333],[0.951,0.03,0.019],[0.659,0.233,0.108],[0.333,0.333,0.333],[0.91,0.089,0.001],[0.588,0.361,0.051],[0.001,0.83,0.169],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.565,0.419,0.016],[0.175,0.764,0.062],[0.333,0.333,0.333],[0.684,0.297,0.019],[0.506,0.379,0.116],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.552,0.429,0.018],[0.34,0.581,0.079],[0.001,0.823,0.176],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.173,0.794,0.033],[0.057,0.864,0.079],[0.333,0.333,0.333],[0.254,0.706,0.039],[0.151,0.591,0.258],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.09,0.878,0.033],[0.149,0.764,0.088],[0.001,0.738,0.261],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.231,0.67,0.099],[0.027,0.742,0.231],[0.333,0.333,0.333],[0.451,0.427,0.121],[0.245,0.325,0.429],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.133,0.793,0.075],[0.106,0.524,0.37]],
+    [[0.001,0.998,0.001],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.001,0.998,0.001],[0.001,0.998,0.001],[0.001,0.998,0.001],[0.001,0.998,0.001],[0.001,0.998,0.001],[0.001,0.998,0.001],[0.333,0.333,0.333],[0.276,0.699,0.025],[0.546,0.31,0.144],[0.333,0.333,0.333],[0.002,0.997,0.001],[0.001,0.998,0.001],[0.001,0.998,0.001],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.001,0.998,0.001],[0.001,0.997,0.001],[0.333,0.333,0.333],[0.001,0.998,0.001],[0.002,0.997,0.001],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.001,0.998,0.001],[0.001,0.998,0.001],[0.001,0.998,0.001],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.001,0.998,0.001],[0.002,0.996,0.002],[0.333,0.333,0.333],[0.001,0.998,0.001],[0.014,0.976,0.009],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.001,0.998,0.001],[0.002,0.997,0.001],[0.001,0.998,0.001],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.001,0.998,0.001],[0.004,0.993,0.003],[0.333,0.333,0.333],[0.001,0.998,0.001],[0.027,0.958,0.015],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.001,0.998,0.001],[0.002,0.995,0.002]],
+    [[0.001,0.63,0.369],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.002,0.66,0.338],[0.487,0.377,0.136],[0.125,0.286,0.588],[0.008,0.66,0.332],[0.695,0.041,0.264],[0.489,0.001,0.51],[0.333,0.333,0.333],[0.672,0.002,0.325],[0.659,0.108,0.233],[0.333,0.333,0.333],[0.764,0.235,0.001],[0.189,0.495,0.317],[0.001,0.605,0.394],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.557,0.302,0.141],[0.094,0.431,0.475],[0.333,0.333,0.333],[0.811,0.02,0.168],[0.656,0.004,0.341],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.03,0.616,0.355],[0.12,0.425,0.455],[0.001,0.619,0.38],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.289,0.518,0.194],[0.059,0.643,0.298],[0.333,0.333,0.333],[0.786,0.033,0.181],[0.485,0.038,0.478],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.032,0.527,0.441],[0.046,0.438,0.516],[0.001,0.655,0.344],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.388,0.579,0.033],[0.135,0.753,0.112],[0.333,0.333,0.333],[0.921,0.046,0.032],[0.752,0.039,0.209],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.333,0.333,0.333],[0.06,0.772,0.168],[0.008,0.765,0.228]],
+]
+SHARE = [0.0116,0,0,0.05165,0.04344,0.03559,0.22614,0.1665,0.10081,0,0.00132,0.00001,0,0.02062,0.04176,0.08125,0,0,0,0.02507,0.00507,0,0.02544,0.00459,0,0,0,0,0.00518,0.00378,0.05392,0,0,0,0.01481,0.00173,0,0.00891,0.00056,0,0,0,0,0.00328,0.0016,0.04315,0,0,0,0.01059,0.00094,0,0.00389,0.00028,0,0,0,0,0.00576,0.00075]
+STREET = {"preflop": 0, "flop": 1, "turn": 2, "river": 3}
+MOVE = {"fold": 0, "check": 1, "call": 1, "raise": 2}
+LOG_PRIOR = [math.log(w) for w in TYPE_PRIOR]
+# LOGT[cell * 3 + move][t]: type t's log-chance of that move there, so each observed action costs one pass over types.
+LOGT = [[math.log(max(t[c][m], 1e-3)) for t in TYPES] for c in range(60) for m in range(3)]
+
+
+def _type_reads():
+    """READS[k][t]: type t's value of each rate the base reads, from its cell rates weighted by SHARE: entering a pot,
+    preflop raise, postflop aggression, fold to a bet of our size (bucket 2), calling a big preflop raise, calling a shove."""
+    first = [z * 3 + r for z in (1, 2, 3) for r in (0, 1)]  # preflop, facing the blinds or one raise
+    post = range(15, 60)
+
+    def ratio(t, cells, num, den):
+        q = TYPES[t]
+        return sum(SHARE[c] * num(q[c]) for c in cells) / sum(SHARE[c] * den(q[c]) for c in cells)
+
+    one = lambda q: 1.0  # noqa: E731
+    reads = (
+        (first, lambda q: 1.0 - q[0], one),
+        (first, lambda q: q[2], one),
+        (post, lambda q: q[2], lambda q: q[1] + q[2]),
+        ([c for c in post if c // 3 % 5 == 2], lambda q: q[0], one),
+        ([z * 3 + r for z in (2, 3, 4) for r in (1, 2)], lambda q: 1.0 - q[0], one),
+        ([12, 13, 14], lambda q: 1.0 - q[0], one),
+    )
+    return [[ratio(t, cells, num, den) for t in range(len(TYPES))] for cells, num, den in reads]
+
+
+READS = _type_reads()
+
 
 def card(text):
     return RANKS.index(text[0]) * 4 + SUITS.index(text[1])
@@ -391,11 +443,28 @@ class Seat:
         self.pf_faced = self.pf_called = self.shove_faced = self.shove_called = 0
 
 
+class Track(Seat):
+    """One seat's raw evidence: Seat's counts with each hand weighted 2 ** (hand / half_life), so old hands fade
+    without rescaling every count each hand; its log-likelihood under each personality; and the preflop hand_pct
+    it showed at showdown after raising and after only calling: [raises, their pct sum, calls, their pct sum]."""
+
+    __slots__ = ("ll", "acts", "shown")
+
+    def __init__(self):
+        Seat.__init__(self)
+        self.ll = [0.0] * len(TYPES)
+        self.acts = 0.0
+        self.shown = [0.0, 0.0, 0.0, 0.0]
+
+
 class Agent:
     def __init__(self, params=None):
         self.p = dict(PARAMS, **(params or {}))
         self.rng = random.Random()
-        self.seats = []
+        self.seats = []  # what the reads see: Seat counts blended by _refresh
+        self.raw = []
+        self.me = -1
+        self.hand = 0
         self.stack = 2000
         self.bb = 20
         self.spent = 0.0
@@ -403,6 +472,8 @@ class Agent:
 
     def on_table_start(self, info):
         self.seats = [Seat() for _ in range(info["num_players"])]
+        self.raw = [Track() for _ in range(info["num_players"])]
+        self.me = info.get("seat", -1)
         self.stack = info["starting_stack"]
         self.bb = info.get("big_blind", 20)
 
@@ -430,54 +501,115 @@ class Agent:
         return self.seats[i]
 
     def on_hand_end(self, summary):
-        big = self.p["big_bet"] * self.stack
+        t0 = time.perf_counter()
+        p = self.p
+        n = len(summary["stacks"])
+        while len(self.raw) < n:
+            self.raw.append(Track())
+        self.hand += 1
+        w = 2.0 ** (self.hand / p["half_life"])
+        big = p["big_bet"] * self.stack
+        pf_big = p["pf_big_bb"] * self.bb
         entered, raised, shoved = set(), set(), set()
-        street, bet_open = "preflop", False
-        pf_big = self.p["pf_big_bb"] * self.bb
-        put, top = {}, 0
+        street, bet_open, raises, pot, bets = "preflop", False, 0, 0, [0] * n
         for h in summary["history"]:
-            a, i = h["action"], h["seat"]
+            a, i, amount = h["action"], h["seat"], h["amount"]
             if h["street"] != street:
-                street, bet_open = h["street"], False
+                street, bet_open, raises, bets = h["street"], False, 0, [0] * n
             if a in ("small_blind", "big_blind"):
-                put[i] = h["amount"]
-                top = max(top, h["amount"])
+                bets[i] += amount
+                pot += amount
                 continue
-            s = self._seat(i)
+            s = self.raw[i]
+            top = max(bets)
+            to_call = top - bets[i]
+            if i != self.me:
+                size = (0 if to_call <= 0 else 4 if to_call >= big else 1 if to_call < 0.35 * pot
+                        else 2 if to_call < 0.8 * pot else 3)
+                lt = LOGT[((STREET[street] * 5 + size) * 3 + min(raises, 2)) * 3 + MOVE[a]]
+                ll = s.ll
+                for t in range(len(ll)):
+                    ll[t] += w * lt[t]
+                s.acts += w
+            if a == "raise":
+                pot += amount - bets[i]
+                bets[i] = amount
+                raises += 1
+            elif a == "call":
+                pot += amount
+                bets[i] += amount
             if street == "preflop":
-                if top >= pf_big and put.get(i, 0) < top:
-                    s.pf_faced += 1
-                    s.pf_called += a != "fold"
+                if top >= pf_big and to_call > 0:
+                    s.pf_faced += w
+                    s.pf_called += w * (a != "fold")
                     if top >= big:
-                        s.shove_faced += 1
-                        s.shove_called += a != "fold"
-                if a == "raise":
-                    put[i] = top = max(top, h["amount"])
-                elif a == "call":
-                    put[i] = put.get(i, 0) + h["amount"]
+                        s.shove_faced += w
+                        s.shove_called += w * (a != "fold")
                 if a in ("call", "raise"):
                     entered.add(i)
                 if a == "raise":
                     raised.add(i)
-                    if h["amount"] >= big:
+                    if amount >= big:
                         shoved.add(i)
                 continue
             if bet_open:
                 if a == "fold":
-                    s.folds += 1
+                    s.folds += w
                 else:
-                    s.continues += 1
+                    s.continues += w
             if a == "raise":
-                s.bets += 1
+                s.bets += w
                 bet_open = True
             elif a in ("check", "call"):
-                s.passive += 1
-        for i in range(len(summary["stacks"])):
-            s = self._seat(i)
-            s.hands += 1
-            s.vpip += i in entered
-            s.pfr += i in raised
-            s.shove += i in shoved
+                s.passive += w
+        for k, cards in summary.get("shown", {}).items():
+            i = int(k)
+            if i < n and (i in raised or i in entered):
+                pct = hand_pct(card(cards[0]), card(cards[1]))
+                j = 0 if i in raised else 2
+                self.raw[i].shown[j] += w
+                self.raw[i].shown[j + 1] += w * pct
+        for i in range(n):
+            s = self.raw[i]
+            s.hands += w
+            s.vpip += w * (i in entered)
+            s.pfr += w * (i in raised)
+            s.shove += w * (i in shoved)
+            if i != self.me:
+                self._refresh(i, 1.0 / w)
+        self.spent += time.perf_counter() - t0
+
+    def _refresh(self, i, d):
+        """Set seat i's read counts: its own counts faded by d, plus pseudo-counts at its personality mixture's
+        rates that weigh up to type_w observations as evidence grows; _rate then adds the prior. A seat whose
+        raises show no stronger hands than its calls gets its raise and shove ranges widened toward its entering one."""
+        p = self.p
+        r, v = self.raw[i], self._seat(i)
+        lp = [a + p["temper"] * d * b for a, b in zip(LOG_PRIOR, r.ll)]
+        top = max(lp)
+        post = [math.exp(x - top) for x in lp]
+        acts = r.acts * d
+        mm = p["type_w"] * acts / (acts + p["type_e"])
+        m = mm / sum(post)
+        vpip, pfr, aggr, fold, pfcall, shcall = (m * sum(map(float.__mul__, post, q)) for q in READS)
+        v.hands = r.hands * d + mm
+        v.vpip = r.vpip * d + vpip
+        v.pfr = r.pfr * d + pfr
+        v.shove = r.shove * d + mm * p["prior_shove"]  # shortcut: cells carry no bet size, so no personality shove rate
+        v.bets, v.passive = r.bets * d + aggr, r.passive * d + mm - aggr
+        v.folds, v.continues = r.folds * d + fold, r.continues * d + mm - fold
+        v.pf_faced, v.pf_called = r.pf_faced * d + mm, r.pf_called * d + pfcall
+        v.shove_faced, v.shove_called = r.shove_faced * d + mm, r.shove_called * d + shcall
+        sh, k = r.shown, p["shown_prior"]
+        if sh[0] * d > 0.5:
+            pr = self._rate(v.pfr, v.hands, p["prior_pfr"])
+            vp = self._rate(v.vpip, v.hands, p["prior_vpip"])
+            # A strategic seat shows raises from its top pfr share and calls from the band below, vpip / 2 apart.
+            gap = ((sh[3] * d + k * (pr + vp) / 2) / (sh[2] * d + k)) - ((sh[1] * d + k * pr / 2) / (sh[0] * d + k))
+            rnd = min(1.0, max(0.0, 1.0 - gap / (p["random_gap"] * vp / 2)))
+            if rnd:
+                v.pfr += rnd * max(0.0, v.vpip - v.pfr)
+                v.shove += rnd * max(0.0, v.vpip - v.shove)
 
     # --------------------------------------------------------------- acting
     def act(self, state):
