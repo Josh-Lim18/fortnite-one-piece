@@ -53,7 +53,34 @@ Winners (13 teams at +30 bb/100 or more) against losers (10 teams at −10 or le
 
 ## Clones
 
-`opponents/real/clone_<team>.py`: one per rival team with 2,000+ counted-round decisions (38 teams), from `tools/analyze.py 'hands/saturday_r*.json' --emit opponents/real/`, playing `opponents/clone_base.py` from the team's rates. Seated at clone-only tables (56 tables, all-round fit), clones matched their team within a mean 2.4 points of VPIP, 1.4 of PFR, 2.1 of 3-bet, 4.2 of fold to a bet, but 6.3 of postflop betting when checked to (worst 31) and they shove 1–6 points too often (re-raise wars between clones reach 800 chips). Postflop play is the roughest part: clones use fixed hand-strength bands, not each team's.
+`opponents/real/clone_<team>.py`: one per rival team with 2,000+ counted-round decisions (38 teams), from `tools/analyze.py 'hands/saturday_r*.json' --emit opponents/real/`, playing `opponents/clone_base.py` from the team's rates. Seated at 56 clone-only tables of seven, clones matched their team's counted-round rates within a mean of 1.3 points of VPIP (worst 13), 1.8 of PFR, 2.5 of 3-bet, 3.6 of betting when checked to (worst 10) and 4.0 of folding to a bet (worst 15); they shove about 2 points too often (re-raise wars between clones reach 800 chips). Postflop play is the roughest part: clones use fixed hand-strength bands, not each team's, and they are easier than the real teams: v1-fast makes +123 ± 10 bb/100 against them in `tools/sim.py`, against single-digit bb/100 for demo-1 on the site.
+
+## Which bot to upload
+
+Paired against `notes/bot-v1-fast.py` on the same deals (`tools/sim.py CANDIDATE --vs notes/bot-v1-fast.py --rounds 96 --seed 7 --pool <the 38 clones, each listed once per counted round it played>`), with own thinking time per 1,000-hand round in-process, six tables of the same clones run back to back, as a ratio to v1-fast's (0.13 s):
+
+| bot | bb/100 against v1-fast | time ratio | on the site |
+|---|---|---|---|
+| v1-fast (v4, incumbent) | 0 | 1.00x | r024: 2.03 s of the 10 s bank, 0 timeouts, −46 bb/100 (one round) |
+| demo-2 | −4.0 ± 2.8 | 1.17x | its budgets are demo-1's (trials 60, decision_ms 1.5, round_budget_s 3.0, no round_stop_s); demo-1 used 9.87 s and 10.03 s with 41 decisions banked out in r022–r023 |
+| picker-1 | −49.9 ± 6.0 | 1.94x | not uploaded |
+| picker-1, profiler refit (k=5 below) | −49.9 ± 5.8 | 1.74x | not uploaded |
+
+No bot errors in any run. On the earlier clone pool (fitted from practice and counted rounds) demo-2 was +1.9 ± 3.5 and 1.01x, picker-1 −52.8 ± 6.4 and 1.83x. The in-process ratio understates demo-2's real cost: its rollouts stop on wall-clock deadlines, which the laptop rarely reaches and the site does.
+
+**Keep v1-fast.** It also leaves room: on the site it used 2.03 s of the 10 s bank, so it could afford about 3x its own thinking.
+
+## Layer 2 refit
+
+`python3 model/fit.py hands/ model/sim` (40 real rounds: 30 train, 10 held out by round; 80 simulated, 60 train), k from 4 to 12 scored on 7 real training rounds held back: 0.6648 to 0.6676 nats, best k=5. `model/fitted.py` is 12,066 bytes. Real held-out rounds (`python3 model/evaluate.py hands/`), nats per opponent decision:
+
+| model | refit | previous fit (simulated only, k=9) |
+|---|---|---|
+| prior only | 0.8411 | 0.8910 |
+| counts + prior | 0.6710 | 0.6754 |
+| full, with types | 0.6665 | 0.6925 |
+
+Full minus counts −0.0044 ± 0.0006 (it was +0.0180 ± 0.0034: the old types hurt on real data). Calibration on real rounds, top type posterior against how often it is the team's usual type: 0.37 stated / 0.35 hit (130 seat-hands), 0.54 / 0.71 (7,632), 0.70 / 0.85 (27,377), 0.87 / 0.90 (18,031), 0.99 / 0.54 (5,830). Below 0.95 the model is underconfident; at 0.95+ it is badly overconfident (gap 0.45). Teams changed bots between practice and counted rounds, so "usual type" is itself blurred.
 
 ## Per team, counted rounds
 
