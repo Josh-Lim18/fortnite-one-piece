@@ -4,6 +4,8 @@ Updated Sat 14 Nov 2026, 13:25 GMT. Workflow: `hackathon-build`. Read `SPEC.md` 
 
 ## Owner decisions
 
+- Team plan (Owen's Notion page "Imperial AI Hack talks", section "Poker Bot — Four-person parallel workflow", confirmed allocation): lane A Josh, arena and integration, owns `arena/`, the starter-kit snapshot, shared config and the release `bot.py`; lanes B and C Nguyên Anh, sourcing public bots then improving the winning candidate; lane D Owen and Colin, evaluation and quality, owning `evaluation/`, `tests/` and result analysis, split between them with distinct files. Nobody reviews their own changes; Josh integrates serially. Owen said "I am doing D" (Sat 13:45). As of 13:45 the team repo's main holds only the agent board, and AGENTS.md has no lanes yet.
+
 - Every assumption about an opponent must be adaptive to the profile (SPEC.md, Strategy); unusual moves are gated per seat by measured responses (Sat 13:40).
 
 - Every routine task (code, simulations, data) goes to an Opus agent (`model: "opus"`). Fable is for planning and orchestration only; Owen moved this orchestrator session to Opus 5.5 at 13:15 because Fable was using too much of his plan.
