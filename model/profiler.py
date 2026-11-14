@@ -155,6 +155,24 @@ class Profiler:
         z = sum(n) + m * sum(mean)
         return tuple((n[a] + m * mean[a]) / z for a in (0, 1, 2))
 
+    def predict_types(self, seat, situation):
+        """[(weight, (fold, call, raise))]: predict() split by type, each type's rates blended with the seat's
+        own counts; their weighted mean is predict()."""
+        if not (self.use_types and self.use_counts):
+            return [(1.0, self.predict(seat, situation))]
+        w = self.type_posterior(seat)
+        m = self.type_m[situation]
+        decay = 2.0 ** (-self.hand / HALF_LIFE)
+        c = self.counts[seat]
+        i = situation * 3
+        n = (c[i] * decay, c[i + 1] * decay, c[i + 2] * decay)
+        out = []
+        for t in range(self.k):
+            tp = self.types_p[t][situation]
+            z = sum(n) + m * sum(tp)
+            out.append((w[t], tuple((n[a] + m * tp[a]) / z for a in (0, 1, 2))))
+        return out
+
     def range(self, seat, street, action):
         """Distribution over hand-strength buckets (0 weakest) of `seat`'s hand after `action` (1 or 2) on `street`."""
         w = self.type_posterior(seat)

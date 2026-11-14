@@ -2,9 +2,11 @@
 action is scored by the log-loss of the probability predicted just before it.
 
     python3 model/evaluate.py model/sim     # held-out rounds of the folder, constants from model/fitted.py
+    python3 model/evaluate.py model/sim --fitted other_fitted.py
 """
 import argparse
 import math
+import random
 import multiprocessing
 import os
 import sys
@@ -13,12 +15,12 @@ import time
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from dataset import load, split, summaries  # noqa: E402
-from profiler import TEMPER, Profiler, cell, decisions  # noqa: E402
+from profiler import SAMPLES, TEMPER, Profiler, cell, decisions, showdown_buckets  # noqa: E402
 
 SEEN = (0, 25, 100, 300)          # hands-seen bucket starts
 CHECKPOINTS = (25, 100, 300, 1000)  # hands after which a seat's top type is checked
 CONF = (0.4, 0.6, 0.8, 0.95, 1.01)  # top type posterior bucket ends, for the calibration table
-TEMPERS = (0.05, 0.1, 0.15, 0.2, 0.3, 0.5, 1.0)
+TEMPERS = (0.005, 0.01, 0.02, 0.03, 0.04, 0.05, 0.1)
 VERSIONS = (("prior", dict(counts=False, types=False)), ("counts", dict(types=False)), ("full", {}))
 
 
@@ -28,7 +30,8 @@ def _bucket(hand):
 
 def replay(job):
     """Sums for one round: log-loss and count per version and hands-seen bucket, type matches per checkpoint
-    and bot, calibration of the top type posterior after every hand, and time spent in observe and predict."""
+    and bot, calibration of the top type posterior after every hand, log-loss of the fitted type ranges against
+    every dealt hand (simulated files only), and time spent in observe and predict."""
     path, fitted, temper = job
     rnd, bots = load(path)
     hands = list(summaries(rnd))
@@ -38,11 +41,20 @@ def replay(job):
     match = {}
     calib = [[0.0, 0, 0] for _ in CONF]  # per bucket: sum of top posterior, hits, (seat, hand)s
     nll = [0.0, 0]                       # -log posterior of the seat's usual type, after every hand
+    rng_loss = [0.0, 0]                  # -log range probability of the hand's true strength bucket
     t_obs = t_pred = 0.0
     calls = 0
     for s in hands:
         b = _bucket(s["hand_number"])
-        for seat, street, size, raises, _, action in decisions(s["history"], n):
+        acts = list(decisions(s["history"], n))
+        last = {(d[0], d[1]): d[5] for d in acts}
+        dealt = {seat: c for seat, c in s["dealt"].items() if any(a for (st, _), a in last.items() if st == seat)}
+        strength = showdown_buckets(dealt, s["board"], random.Random(s["hand_number"]), SAMPLES) if dealt else {}
+        for (seat, street), action in last.items():
+            if action and seat in strength and street < len(strength[seat]):
+                rng_loss[0] -= math.log(max(models["full"].range(seat, street, action)[strength[seat][street]], 1e-9))
+                rng_loss[1] += 1
+        for seat, street, size, raises, _, action in acts:
             if seat == rnd["seat"]:
                 continue
             c = cell(street, size, raises)
@@ -76,7 +88,7 @@ def replay(job):
                     m[0] += hit
                     m[1] += 1
                     m[2] += top > 0.95
-    return loss, match, calib, nll, t_obs, t_pred, calls
+    return loss, match, calib, nll + rng_loss, t_obs, t_pred, calls
 
 
 def score(fitted, files, temper=TEMPER):
@@ -86,7 +98,7 @@ def score(fitted, files, temper=TEMPER):
     loss = {name: [[0.0, 0] for _ in SEEN] for name, _ in VERSIONS}
     match = {}
     calib = [[0.0, 0, 0] for _ in CONF]
-    nll = [0.0, 0]
+    nll = [0.0, 0, 0.0, 0]
     t_obs = t_pred = 0.0
     calls = 0
     for l, m, cb, nl, to, tp, c in parts:
@@ -109,7 +121,9 @@ def score(fitted, files, temper=TEMPER):
         mean = sum(d) / len(d)
         se = (sum((x - mean) ** 2 for x in d) / (len(d) - 1) / len(d)) ** 0.5 if len(d) > 1 else float("inf")
         out["full_vs_" + other] = (mean, se)
-    out.update(loss=loss, match=match, calib=calib, type_nll=nll[0] / max(nll[1], 1), us_observe=1e6 * t_obs / calls, us_predict=1e6 * t_pred / calls, rounds=len(files))
+    out.update(loss=loss, match=match, calib=calib, type_nll=nll[0] / max(nll[1], 1),
+               range_nll=nll[2] / nll[3] if nll[3] else None,
+               calib_gap=max(abs(c - h) / n for c, h, n in calib if n), us_observe=1e6 * t_obs / calls, us_predict=1e6 * t_pred / calls, rounds=len(files))
     return out
 
 
@@ -117,17 +131,27 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("folder")
     ap.add_argument("--temper", type=float, default=TEMPER)
+    ap.add_argument("--fitted", help="constants file to score instead of model/fitted.py")
     ap.add_argument("--fit-temper", action="store_true",
                     help="print the type log-loss of each candidate temper on the fitting rounds, then use the best")
     a = ap.parse_args()
-    from fitted import FITTED
+    if a.fitted:
+        scope = {}
+        with open(a.fitted) as f:
+            exec(f.read(), scope)  # a constants file written by fit.py
+        FITTED = scope["FITTED"]
+    else:
+        from fitted import FITTED
     train, test = split(a.folder)
     if a.fit_temper:
-        fits = [(score(FITTED, train, t)["type_nll"], t) for t in TEMPERS]
-        for nl, t in fits:
-            print("temper %.2f: -log posterior of the usual type %.4f on %d fitting rounds" % (t, nl, len(train)))
+        fits = []
+        for t in TEMPERS:
+            r = score(FITTED, train, t)
+            fits.append((r["type_nll"], t))
+            print("temper %.3f: -log posterior of the usual type %.4f, worst calibration gap %.3f on %d fitting rounds"
+                  % (t, r["type_nll"], r["calib_gap"], len(train)))
         a.temper = min(fits)[1]
-        print("best temper %.2f\n" % a.temper)
+        print("best temper %.3f\n" % a.temper)
     r = score(FITTED, test, a.temper)
     print("held-out: %d rounds of %s. Log-loss in nats per opponent decision (lower is better)." % (r["rounds"], a.folder))
     print("hands seen        " + "".join("%12s" % ("%d-%s" % (s, e)) for s, e in zip(SEEN, SEEN[1:] + ("",)))
@@ -153,7 +177,9 @@ def main():
         for lo, hi, (conf, hits, n) in zip((0.0,) + CONF, CONF, r["calib"]):
             if n:
                 print("  %.2f-%.2f  %6.3f  %8.3f  %10d" % (lo, min(hi, 1.0), conf / n, hits / n, n))
-        print("  -log posterior of the usual type: %.4f per (seat, hand)" % r["type_nll"])
+        print("  -log posterior of the usual type: %.4f per (seat, hand); worst gap %.3f" % (r["type_nll"], r["calib_gap"]))
+    if r["range_nll"] is not None:
+        print("range tables against every dealt hand: %.4f nats per (seat, street) that called or raised" % r["range_nll"])
     print("\nprofiler time: observe %.1f us, predict %.1f us per call" % (r["us_observe"], r["us_predict"]))
 
 

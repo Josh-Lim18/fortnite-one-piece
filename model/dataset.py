@@ -42,7 +42,8 @@ def record(bots, seed, path, hands=1000):
     random.seed(rng.randrange(1 << 30))
     players = [LocalPlayer(sim._seeded(sim.load(os.path.join(ROOT, b)), rng.randrange(1 << 30))) for b in bots]
     log = FixedHandsTable(players, hands=hands, seed=rng.randrange(1 << 30), record=True).play()["log"]
-    for h in log:  # the site shows other seats' cards only at showdown
+    for h in log:  # the site shows other seats' cards only at showdown; "dealt" keeps all for fitting ranges
+        h["dealt"] = h["hole"]
         h["hole"] = {s: c for s, c in h["hole"].items() if s in h.get("showdown", {})}
     with open(path, "w") as f:
         json.dump({"round": {"ref": os.path.splitext(os.path.basename(path))[0]}, "bots": bots, "hands": log}, f)
@@ -66,9 +67,12 @@ def load(path):
     """(round from load_hands, bot file per seat or None for real data). Every seat of a simulated round is an opponent."""
     rnd = load_hands(path)
     with open(path) as f:
-        bots = json.load(f).get("bots")
+        data = json.load(f)
+    bots = data.get("bots")
     if bots:
         rnd["seat"] = None
+    for h, raw in zip(rnd["hands"], data["hands"]):
+        h["dealt"] = {int(s): c for s, c in (raw.get("dealt") or {}).items()}
     return rnd, bots
 
 
@@ -90,16 +94,20 @@ def summaries(rnd):
         live = [s for s in range(n) if s not in folded]
         shown = {str(s): h["hole"][s] for s in live if s in h["hole"]} if len(live) > 1 else {}
         yield {"hand_number": h["n"], "button": h["button"], "seats": n, "history": history,
-               "board": board, "shown": shown}
+               "board": board, "shown": shown, "dealt": h.get("dealt") or {}}
 
 
-def rows(path, samples=FIT_SAMPLES):
+def rows(path, samples=FIT_SAMPLES, showdown_only=False):
     """One dict per opponent decision in a round file. hole, board and strength (the hand's bucket on that
-    street, 0 weakest) are set only when the seat reached showdown."""
+    street, 0 weakest) are set when the seat's cards are known: every hand in simulated files (unless
+    `showdown_only`), only hands that reached showdown in real ones."""
     rnd, bots = load(path)
     out = []
     for s in summaries(rnd):
         shown = {int(k): v for k, v in s["shown"].items()}
+        if s["dealt"] and not showdown_only:
+            acted = {seat for seat, _, _, _, _, a in decisions(s["history"], s["seats"]) if a}
+            shown = {seat: c for seat, c in s["dealt"].items() if seat in acted}
         strength = showdown_buckets(shown, s["board"], random.Random(s["hand_number"]), samples) if shown else {}
         for seat, street, size, raises, players, action in decisions(s["history"], s["seats"]):
             if seat == rnd["seat"]:
@@ -111,7 +119,8 @@ def rows(path, samples=FIT_SAMPLES):
                         "faces_bet": size > 0, "size": size, "raises": raises, "action": action,
                         "cell": cell(street, size, raises),
                         "hole": shown[seat] if sd else None, "board": s["board"] if sd else None,
-                        "strength": strength[seat][street] if sd else None})
+                        "strength": strength[seat][street] if sd else None,
+                        "dealt": bool(s["dealt"]) and not showdown_only})
     return out
 
 

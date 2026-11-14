@@ -4,6 +4,7 @@
     python3 model/fit.py hands/ --ks 4 5 6
 """
 import argparse
+import functools
 import json
 import multiprocessing
 import os
@@ -22,19 +23,23 @@ RANGE_SHRINK = 20.0
 FEATURE_SHARE = 0.002  # cells rarer than this share of decisions are left out of clustering
 SHOWDOWN_NOTE = ("Ranges come from hands shown at showdown only: a biased sample (hands that fold never show, "
                  "bluffs that win uncalled never show), shrunk toward the type's whole-street range when sparse.")
+DEALT_NOTE = ("Ranges come from every hand dealt (simulated rounds keep all hole cards), shrunk toward the type's "
+              "whole-street range when sparse.")
 
 
-def summarise(path):
+def summarise(path, showdown_only=False):
     """Per opponent seat of a round: its bot (None for real data), action counts per cell, and (street, last
-    action, strength bucket) for each street of each hand it showed down."""
+    action, strength bucket) for each street of each hand whose cards are known."""
     out = {}
-    for r in rows(path):
-        s = out.setdefault(r["seat"], {"bot": r["bot"], "counts": [0] * (CELLS * 3), "last": {}})
+    for r in rows(path, showdown_only=showdown_only):
+        s = out.setdefault(r["seat"], {"bot": r["bot"], "counts": [0] * (CELLS * 3), "last": {}, "dealt": False})
+        s["dealt"] |= r["dealt"]
         s["counts"][r["cell"] * 3 + r["action"]] += 1
         if r["strength"] is not None:
             s["last"][r["hand"], r["street"]] = (("preflop", "flop", "turn", "river").index(r["street"]),
                                                  r["action"], r["strength"])
-    return [{"bot": s["bot"], "counts": s["counts"], "shows": list(s["last"].values())} for s in out.values()]
+    return [{"bot": s["bot"], "counts": s["counts"], "shows": list(s["last"].values()), "dealt": s["dealt"]}
+            for s in out.values()]
 
 
 def norm(xs):
@@ -169,23 +174,28 @@ def main():
     ap.add_argument("folder")
     ap.add_argument("--ks", type=int, nargs="+", default=[4, 5, 6])
     ap.add_argument("--out", default=os.path.join(HERE, "fitted.py"))
+    ap.add_argument("--showdown-ranges", action="store_true",
+                    help="fit ranges from showdown hands only even when the files keep every dealt hand")
     a = ap.parse_args()
     train, _ = split(a.folder)
     val = train[3::4]
     with multiprocessing.Pool() as p:
-        per_round = p.map(summarise, train)
-    sub = [s for path, r in zip(train, per_round) if path not in val for s in r]
+        per_round = p.map(functools.partial(summarise, showdown_only=a.showdown_ranges), train)
+        sub = [s for path, r in zip(train, per_round) if path not in val for s in r]
+        fits = p.starmap(fit, [(sub, k) for k in a.ks])
     seats = [s for r in per_round for s in r]
     print("%d training rounds, %d opponent seat-rounds; k chosen on %d of those rounds held back" % (
         len(train), len(seats), len(val)))
     best = None
-    for k in a.ks:
-        ll = score(fit(sub, k), val)["full"]
+    for k, f in zip(a.ks, fits):
+        ll = score(f, val)["full"]
         print("k=%d  held-out log-loss %.4f nats per decision" % (k, ll))
         if best is None or ll < best[1]:
             best = (k, ll)
     f = fit(seats, best[0])
-    print("chose k=%d; %s" % (best[0], SHOWDOWN_NOTE))
+    dealt = not a.showdown_ranges and any(s["dealt"] for s in seats)
+    note = DEALT_NOTE if dealt else SHOWDOWN_NOTE
+    print("chose k=%d; %s" % (best[0], note))
     describe(f)
     print("prior weight in decisions (median over cells): population %.0f, within type %.0f" % (
         sorted(f["pop_m"])[CELLS // 2], sorted(f["type_m"])[CELLS // 2]))
@@ -195,7 +205,7 @@ def main():
                   '%s\nKeys: pop/types [cell][fold, call, raise]; pop_m/type_m prior weight in decisions per cell;\n'
                   'ranges [type][street][call, raise][strength bucket]; share of decisions per cell; bot_type maps\n'
                   'each training bot to its usual type (for evaluate.py; the profiler ignores it)."""\n'
-                  % (len(seats), os.path.basename(os.path.normpath(a.folder)), best[0], SHOWDOWN_NOTE))
+                  % (len(seats), os.path.basename(os.path.normpath(a.folder)), best[0], note))
         out.write("FITTED = " + json.dumps(f, separators=(",", ":")) + "\n")
     print("wrote %s, %d bytes" % (a.out, os.path.getsize(a.out)))
 
