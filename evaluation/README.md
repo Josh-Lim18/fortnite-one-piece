@@ -8,7 +8,7 @@ Every tool needs the organisers' starter kit (the engine). It looks for `kit/` a
 ## Commands
 
 ```bash
-python3 tests/check_submission.py bot.py                       # the gate before any upload
+python3 tests/check_submission.py bot.py --reference v1-fast.py   # the gate before any upload
 python3 evaluation/run.py --incumbent kit/bot.py cand.py [more.py ...] --rounds 32 --seed 1   # development
 python3 evaluation/run.py --incumbent kit/bot.py cand.py --final                             # held-out seeds
 python3 evaluation/aggregate.py                                # one table per incumbent, with verdicts
@@ -16,7 +16,7 @@ python3 evaluation/analyze.py hands/                           # hand histories 
 python3 evaluation/analyze.py hands/ --emit evaluation/opponents/   # also write a clone bot per opponent seat
 
 python3 tests/test_run.py               # deals repeat, chips sum to zero, a bot vs itself is exactly 0
-python3 tests/test_check_submission.py  # the gate fails broken or slow bots and passes kit/bot.py
+python3 tests/test_check_submission.py  # the gate fails broken or slow bots or a broken reference, passes kit/bot.py
 python3 tests/test_analyze.py           # analyze.py reads known bots' habits back; the pool plays clean
 ```
 
@@ -37,15 +37,18 @@ only on a candidate you would ship.
   pot-limit, fixed-limit, no-limit with a raise cap of 3) with the real limits: 10 ms a decision, 10 s bank a
   round. It fails on any error, timeouts above 1% of decisions, any bank-out, or more than 5 s of thinking in a
   round (subprocess wall time, transport included). Then it times the bot's own thinking in-process, transport
-  excluded: one seeded no-limit round at a 7-seat table against the kit's example bots and `kit/bot.py`, played
-  twice back to back, summing the thread's CPU time (`time.thread_time`) in `act` and `on_hand_end`. It fails
-  when the lower of the two totals is over `--own-limit` (default 0.4 s per 1,000 hands, scaled to `--hands`),
-  and prints the act and on_hand_end split and the mean per decision. The platform ran 10-15x slower than a
-  laptop, so 0.4 s here is about the team's 5 s target there. CPU time, unlike wall time, barely moves when the
-  laptop is busy with other work. It does **not**
-  prove the bot is safe in the sandbox: that is one CPU core, 512 MB and a sealed container, and this laptop
-  is none of those. It does not check memory, CPU use between turns, or behaviour
-  against opponents other than the house bots.
+  excluded, against `--reference` (required: v1-fast, whose platform time is known; the repo holds no copy).
+  Both play the same seeded no-limit round at a 7-seat table against the kit's example bots and `kit/bot.py`,
+  alternating reference, candidate, reference, candidate, each time summing the thread's CPU time
+  (`time.thread_time`) in `act` and `on_hand_end`. The lower of each bot's two totals counts. The estimate is
+  2.03 s (v1-fast's own thinking in real round r024) times candidate / reference, and it fails above 5 s (the
+  team's target, half the 10 s bank). It prints both totals with their act and on_hand_end split, the ratio,
+  the estimate and the limit, and fails clearly when the reference won't load, raises in `act`, or thinks under
+  1 ms. Laptop seconds swing about 1.8x with load (busy cores push the bot onto the M1's slow cores), but two
+  bots timed back to back under the same load keep their ratio, and `--hands` scales both rounds alike. It does
+  **not** prove the bot is safe in the sandbox: that is one CPU core, 512 MB and a sealed container, and this
+  laptop is none of those. It does not check memory, CPU use between turns, or behaviour against opponents other
+  than the house bots.
 - **`evaluation/run.py`** plays each round once per bot (incumbent first) at the same table: same deck seed,
   same opponents drawn from the pool by the round's seed, same seat (rotating with the round), and the same
   random seeds for every bot's `rng`. The paired difference cancels most of the card luck, so its standard

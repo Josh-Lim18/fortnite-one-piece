@@ -1,6 +1,6 @@
 """The gate before any upload: the constraints the tournament enforces, one line per check.
 
-    python3 tests/check_submission.py BOT.py [--kit PATH] [--hands 1000] [--own-limit 0.4]
+    python3 tests/check_submission.py BOT.py --reference V1_FAST.py [--kit PATH] [--hands 1000]
 
 Re-runs itself under Python 3.12 (`uv run --python 3.12`), the tournament's version, and exits
 non-zero when any check fails.
@@ -19,8 +19,13 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MAX_BYTES = 200_000
 TIMEOUT_MS, BANK_S = 10.0, 10.0
 MAX_TIMEOUT_SHARE, MAX_THINK_S = 0.01, 5.0
-# The platform runs 10-15x slower than a laptop; 0.4 s of own laptop thinking per 1,000 hands is about 5 s there.
-OWN_LIMIT_S, OWN_SEATS, OWN_SEED = 0.4, 7, 1
+# v1-fast's own thinking in real round r024; scaled by the in-process ratio, since load skews laptop seconds.
+REFERENCE_PLATFORM_S = 2.03
+# The team's target: half the 10 s bank.
+PLATFORM_LIMIT_S = 5.0
+# Below a millisecond the reference's total is timer noise, not thinking.
+MIN_REFERENCE_S = 0.001
+OWN_SEATS, OWN_SEED = 7, 1
 # (betting, raise_cap): every format the organisers can switch on; fixed_limit caps at 4 by default.
 FORMATS = [("no_limit", 0), ("pot_limit", 0), ("fixed_limit", 0), ("no_limit", 3)]
 HOUSE = ["tight_aggressive.py", "calling_station.py", "random_bot.py"]
@@ -96,27 +101,44 @@ def own_round(classes, hands):
         return run
     bot.act, bot.hand_end = timed("act", bot.act), timed("end", bot.hand_end)
     FixedHandsTable(players, hands=hands, config={"betting": "no_limit"}, seed=OWN_SEED).play()
+    if bot.stats.errors:
+        raise RuntimeError("act raised %d time(s), first:\n%s" % (bot.stats.errors, bot.stats.error_samples[0]))
     return spent["act"], spent["end"], bot.stats.decisions
 
 
-def own_check(path, kit, hands, limit):
-    """The bot's own thinking, transport excluded: the lower of two identical rounds against the kit's bots."""
-    try:
-        others = [importlib.import_module(h[:-3]).Agent for h in HOUSE]
-        others.append(load(os.path.join(kit, "bot.py"), "kit_bot"))
-        classes = [load(path, "submission")] + [others[i % len(others)] for i in range(OWN_SEATS - 1)]
-        runs = [own_round(classes, hands) for _ in range(2)]  # the lower total damps noise from other processes
-    except Exception as e:
-        return False, "own thinking: failed in-process: %r" % e
-    act_s, end_s, decisions = min(runs, key=lambda r: r[0] + r[1])
-    total, limit = act_s + end_s, limit * hands / 1000
-    return total <= limit, ("own thinking (in-process, no_limit, %d hands, %d seats, lower of %.3f s and %.3f s): "
-                            "%.3f s = act %.3f s + on_hand_end %.3f s, %d decisions, %.3f ms a decision (limit %.2f s)"
-                            % (hands, OWN_SEATS, sum(runs[0][:2]), sum(runs[1][:2]), total, act_s, end_s,
-                               decisions, 1000 * total / max(decisions, 1), limit))
+def own_check(path, reference, kit, hands):
+    """The bot's own thinking against the reference's, transport excluded: the same seeded round against the
+    kit's bots, played reference, candidate, reference, candidate so both see the same load; each bot's lower total
+    counts."""
+    others = [importlib.import_module(h[:-3]).Agent for h in HOUSE] + [load(os.path.join(kit, "bot.py"), "kit_bot")]
+    runs = {"reference": [], "candidate": []}
+    for role, bot in [("reference", reference), ("candidate", path)] * 2:
+        try:
+            # A fresh import each run, so module-level caches never warm a bot's second run.
+            classes = [load(bot, role)] + [others[i % len(others)] for i in range(OWN_SEATS - 1)]
+            runs[role].append(own_round(classes, hands))
+        except Exception as e:
+            return False, "own thinking: %s %s failed in-process: %s: %s" % (role, bot, type(e).__name__, e)
+    best = {role: min(r, key=lambda x: x[0] + x[1]) for role, r in runs.items()}
+    ref_total, cand_total = sum(best["reference"][:2]), sum(best["candidate"][:2])
+    if ref_total < MIN_REFERENCE_S:
+        return False, ("own thinking: reference %s thought only %.6f s in %d hands, too little to divide by; pass "
+                       "v1-fast as --reference" % (reference, ref_total, hands))
+    ratio = cand_total / ref_total
+    estimate = REFERENCE_PLATFORM_S * ratio
+    lines = ["own thinking: about %.2f s a 1,000-hand round on the platform = %.2f s (v1-fast, round r024) x ratio "
+             "%.2f (limit %.1f s)" % (estimate, REFERENCE_PLATFORM_S, ratio, PLATFORM_LIMIT_S)]
+    for role, bot in (("candidate", path), ("reference", reference)):
+        act_s, end_s, decisions = best[role]
+        lines.append("  %s: %.3f s = act %.3f s + on_hand_end %.3f s, %d decisions, %.3f ms a decision "
+                     "(lower of %.3f s and %.3f s): %s" % (role, act_s + end_s, act_s, end_s, decisions,
+                                                          1000 * (act_s + end_s) / max(decisions, 1),
+                                                          sum(runs[role][0][:2]), sum(runs[role][1][:2]), bot))
+    lines.append("  in-process, no_limit, %d hands, %d seats, thread CPU time" % (hands, OWN_SEATS))
+    return estimate <= PLATFORM_LIMIT_S, "\n".join(lines)
 
 
-def play_checks(path, kit, hands, own_limit):
+def play_checks(path, reference, kit, hands):
     """Import and construct Agent(), play one round per format through the kit's subprocess player, then time
     the bot's own thinking in-process."""
     sys.path.insert(0, kit)
@@ -157,7 +179,7 @@ def play_checks(path, kit, hands, own_limit):
         if st.error_samples:
             line += "\n  first error:\n" + st.error_samples[0]
         out.append((ok, line))
-    return out + [own_check(path, kit, hands, own_limit)]
+    return out + [own_check(path, reference, kit, hands)]
 
 
 def main():
@@ -166,8 +188,8 @@ def main():
     ap.add_argument("bot")
     ap.add_argument("--kit", default=os.path.join(REPO, "kit"), help="the organisers' starter kit (default: kit/)")
     ap.add_argument("--hands", type=int, default=1000, help="hands per round (tournament: 1000)")
-    ap.add_argument("--own-limit", type=float, default=OWN_LIMIT_S,
-                    help="most seconds of in-process own thinking per 1,000 hands (default %(default)s)")
+    ap.add_argument("--reference", required=True,
+                    help="the bot whose platform time is known (v1-fast); own thinking is timed against it")
     a = ap.parse_args()
     kit = os.path.abspath(a.kit)
     if not os.path.isfile(os.path.join(kit, "engine", "players.py")):
@@ -176,15 +198,19 @@ def main():
     if not os.path.isfile(a.bot) or not a.bot.endswith(".py"):
         sys.exit("%s is not a .py file; the upload is one Python file." % a.bot)
     path = os.path.abspath(a.bot)
+    if not os.path.isfile(a.reference) or not a.reference.endswith(".py"):
+        sys.exit("--reference %s is not a .py file; pass v1-fast's bot file." % a.reference)
+    reference = os.path.abspath(a.reference)
 
     results = static_checks(path)
-    results += play_checks(path, kit, a.hands, a.own_limit)
+    results += play_checks(path, reference, kit, a.hands)
     for ok, line in results:
         print("%s  %s" % ("PASS" if ok else "FAIL", line))
     failed = sum(not ok for ok, _ in results)
     print("Limits: errors 0, timeouts at most %.0f%% of decisions, at most %.0f s thinking a round (bank %.0f s), "
-          "at most %.2f s own thinking per 1,000 hands in-process (act plus on_hand_end)."
-          % (100 * MAX_TIMEOUT_SHARE, MAX_THINK_S, BANK_S, a.own_limit))
+          "at most %.1f s own thinking (act plus on_hand_end) a round on the platform, estimated as %.2f s x "
+          "this bot's in-process own thinking / the reference's." % (100 * MAX_TIMEOUT_SHARE, MAX_THINK_S, BANK_S,
+                                                                     PLATFORM_LIMIT_S, REFERENCE_PLATFORM_S))
     print("This laptop is not the tournament sandbox (one CPU core, 512 MB, sealed container): "
           "timings here are a guide, not a guarantee.")
     print("%s: %s" % (a.bot, "%d check(s) failed" % failed if failed else "all checks passed"))
