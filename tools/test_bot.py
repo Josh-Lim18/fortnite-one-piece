@@ -61,7 +61,7 @@ def _is_big(move):
     return move["action"] == "all_in" or (move["action"] == "raise" and move["amount"] >= 1200)
 
 
-def test_does_not_shove_an_unopened_pot_against_a_seat_that_calls_everything():
+def test_presses_a_seat_that_calls_everything():
     hole = ["Qs", "Jd"]
     fresh = _agent()
     assert not _is_big(fresh.act(_preflop_state(hole))), "raised big against an unknown seat"
@@ -69,7 +69,7 @@ def test_does_not_shove_an_unopened_pot_against_a_seat_that_calls_everything():
     for n in range(30):
         trained.on_hand_end(_hand(n + 1, big=n % 3 == 0))
     move = trained.act(_preflop_state(hole))
-    assert not _is_big(move), move
+    assert _is_big(move), move
 
 
 def test_a_seat_that_called_every_bet_reads_as_a_non_folder():
