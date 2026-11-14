@@ -39,6 +39,14 @@ Each passes on `bot.py` as uploaded.
 - Stacks reset each hand, so there is no survival value: take every profitable all-in.
 - Organisers may switch to pot-limit or fixed-limit or cap raises; every `state` says which.
 
+## Strategy
+
+- Baseline: tight-aggressive preflop from hand rank and position; postflop from Monte Carlo equity against ranges estimated per seat, compared with pot odds.
+- Every assumption about an opponent is adaptive: it comes from that seat's measured behaviour this round, shrunk toward a table-wide or prior rate while evidence is thin, decayed so a change of style is re-read, and capped so a wrong read costs little.
+- Exploits, each used against a seat only while its measured responses say it profits: wide value bets and all-ins against seats that don't fold; bet sizes chosen from the seat's response curve, from tiny bets to overbets; barrels against seats that fold to repeated bets; check-raises against seats that bet when checked to; light re-raises against raisers that fold to them; exact-range reads of bots whose bet-size formula fingerprints them.
+- Our bet size on a street never depends on bluffing or hand strength, and carries small random jitter.
+- Not doing: deliberate mid-round style switches.
+
 ## Cut list
 
 - Not building: solver or CFR training, neural nets, any model call, cross-round memory (impossible), a dashboard.
@@ -61,11 +69,14 @@ Python, standard library only. The bot must run on 3.12; laptops here have 3.14,
 
 | Slice | Owner | Files | Makes real | Time box |
 |---|---|---|---|---|
-| Strategy and integration | orchestrator | `bot.py`, `scripts/`, `SPEC.md` | 1, 2 | ongoing |
+| Integration | orchestrator | `scripts/`, `SPEC.md`, merges | 1, 2 | ongoing |
 | Simulator and tuner | agent | `tools/sim.py`, `tools/tune.py`, `tools/test_sim.py` | 3, 4 | 90 min |
 | Opponent pool and hand analysis | agent | `opponents/`, `tools/analyze.py`, `tools/test_analyze.py` | 3 | 90 min |
 | Adaption dataset | agent | `adaption/` | 5 | 60 min |
 | Preflop matchup table | agent | `tools/gen_matchups.py`, `tools/matchups.py`, `tools/test_matchups.py` | 3 | 60 min |
+| Bot: exploit non-folders, matchup all-ins | agent, then the next two in order | `bot.py`, `tools/test_bot.py` | 3 | 75 min |
+| Bot: bet-size reads, robust profiling | agent | `bot.py`, `tools/test_bot.py`, `opponents/switcher.py` | 3 | 75 min |
+| Bot: adaptive pressure moves | agent | `bot.py`, `tools/test_bot.py`, `opponents/threshold.py` | 3 | 90 min |
 
 ## Risks
 
