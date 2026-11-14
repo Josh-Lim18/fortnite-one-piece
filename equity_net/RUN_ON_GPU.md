@@ -40,7 +40,7 @@ The first line it prints must say `cuda`. It trains each shape in `SHAPES`, prin
 uv run --python 3.12 python equity_net/measure.py --ref equity_net/data/ref --weights equity_net/weights.txt
 ```
 
-The `network` MAE must be below the laptop's figure: 0.0XXX on this reference set (seed 9001). If it isn't, discard the new weights.
+The `network` MAE must be below the laptop's figure: 0.0264 on this reference set (seed 9001), from 188,000 positions. If it isn't, discard the new weights.
 
 ## 5. Put it in the bot and test
 

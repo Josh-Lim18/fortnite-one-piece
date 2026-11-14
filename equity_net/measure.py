@@ -29,7 +29,7 @@ def main():
     net = net_load(open(a.weights).read().strip())
     rows = [json.loads(line) for p in sorted(glob.glob(os.path.join(a.ref, "*.jsonl"))) for line in open(p)]
     rows = [r for r in rows if r[1]]
-    agent, clock = bot.Agent(), time.perf_counter
+    agent, clock = bot.Agent({"equity_net": False}), time.perf_counter
     err = {"net": [], "mc": []}
     spent = {"net": 0.0, "mc": 0.0}
     by_street = {}

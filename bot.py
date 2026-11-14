@@ -58,7 +58,7 @@ PARAMS = {
     "bluff_on": 0.55, "bluff_off": 0.45,              # lower-bound chance it folds to our bet
     "call_shover_on": 0.20, "call_shover_off": 0.12,  # lower-bound share of hands it goes all in
     "barreller_on": 0.65, "barreller_off": 0.55,      # lower-bound chance it bets when checked to
-    "equity_net": False,       # postflop equity from the network in equity_net/ instead of the Monte Carlo
+    "equity_net": True,        # postflop equity from the network in equity_net/ instead of the Monte Carlo
     "trials": 60,              # Monte Carlo rollouts per postflop decision
     "decision_ms": 1.5,        # stop rolling out after this long
     "round_budget_s": 3.0,     # own thinking time after which rollouts are cut to a quarter
