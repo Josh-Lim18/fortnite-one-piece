@@ -179,6 +179,18 @@ def test_mixes_only_near_a_threshold():
     assert raises(0.0) == {False}
 
 
+def test_equity_net_reads_strength_and_plays_clean():
+    assert BOT.NET, "bot.py has no equity network weights"
+    a = _agent({"equity_net": True})
+    cards = lambda *cs: [BOT.card(c) for c in cs]  # noqa: E731
+    sets = a._equity(cards("As", "Ah"), cards("Ad", "7c", "2h"), [0.3], 0.0)
+    air = a._equity(cards("6s", "3d"), cards("Ad", "Kc", "Th"), [0.3], 0.0)
+    assert sets > 0.9 and air < 0.25, (sets, air)
+    players = [LocalPlayer(lambda: Strict({"equity_net": True}))] + [LocalPlayer(POOL[i % len(POOL)]) for i in range(5)]
+    FixedHandsTable(players, hands=150, seed=12).play()
+    assert players[0].stats.errors == 0, players[0].stats.error_samples[:1]
+
+
 def test_other_structures_play_clean():
     for betting in ("pot_limit", "fixed_limit"):
         players = [LocalPlayer(Strict)] + [LocalPlayer(POOL[i % len(POOL)]) for i in range(5)]

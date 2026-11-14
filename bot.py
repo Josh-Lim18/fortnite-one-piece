@@ -5,7 +5,9 @@ One file, standard library only: the tournament sandbox loads nothing else.
 import base64
 import gc
 import math
+import operator
 import random
+import struct
 import time
 from bisect import bisect_left, bisect_right
 
@@ -56,6 +58,7 @@ PARAMS = {
     "bluff_on": 0.55, "bluff_off": 0.45,              # lower-bound chance it folds to our bet
     "call_shover_on": 0.20, "call_shover_off": 0.12,  # lower-bound share of hands it goes all in
     "barreller_on": 0.65, "barreller_off": 0.55,      # lower-bound chance it bets when checked to
+    "equity_net": False,       # postflop equity from the network in equity_net/ instead of the Monte Carlo
     "trials": 60,              # Monte Carlo rollouts per postflop decision
     "decision_ms": 1.5,        # stop rolling out after this long
     "round_budget_s": 3.0,     # own thinking time after which rollouts are cut to a quarter
@@ -390,6 +393,107 @@ def score(cards):
     if pairs:
         return 1 << 20 | pairs[0] << 12 | singles[0] << 8 | singles[1] << 4 | singles[2]
     return TOP5[mask]
+
+
+# ---- equity network, pasted from equity_net/features.py, equity_net/infer.py and equity_net/weights.txt
+N_FEATURES = 72
+
+
+def net_features(hero, board, widths):
+    """13 hero rank counts, 13 board rank counts, the flushiest suit (13 board ranks in it, whether each hero
+    card is in it), the other three suits' (hero, board) counts, street one-hot, opponents one-hot, widths sorted,
+    then what a small net finds hard to derive: our made-hand class, whether each hole card pairs the board and
+    how many board ranks beat it, and the most ranks in one straight window with and without our cards.
+    Suits are ordered by their whole content, so renaming suits never changes the output."""
+    x = [0.0] * N_FEATURES
+    br = [0] * 13
+    for c in hero:
+        x[c >> 2] += 1.0
+    for c in board:
+        br[c >> 2] += 1
+        x[13 + (c >> 2)] += 1.0
+    suits = []
+    for s in range(4):
+        hm = bm = hn = bn = 0
+        for c in hero:
+            if c & 3 == s:
+                hm |= 1 << (c >> 2)
+                hn += 1
+        for c in board:
+            if c & 3 == s:
+                bm |= 1 << (c >> 2)
+                bn += 1
+        suits.append((hn + bn, bn, hm, bm, hn))
+    suits.sort(reverse=True)
+    _, bn, hm, bm, hn = suits[0]
+    for r in range(13):
+        if bm >> r & 1:
+            x[26 + r] = 1.0
+    hi, lo = max(hero[0] >> 2, hero[1] >> 2), min(hero[0] >> 2, hero[1] >> 2)
+    x[39] = 1.0 if hm >> hi & 1 else 0.0
+    x[40] = 1.0 if hi != lo and hm >> lo & 1 else 0.0
+    for k in range(3):
+        x[41 + 2 * k] = float(suits[k + 1][4])
+        x[42 + 2 * k] = float(suits[k + 1][1])
+    x[47 + (0 if not board else len(board) - 2)] = 1.0
+    ws = sorted((1.0 if w >= 0.95 else w for w in widths[:3]), reverse=True)  # bot.py treats 0.95+ as any hand
+    x[51 + len(ws) - 1] = 1.0
+    for k, w in enumerate(ws):
+        x[54 + k] = w
+    x[57 + ((score(hero + board) >> 20) if board else 1 if hi == lo else 0)] = 1.0  # score needs 5+ cards
+    for k, r in enumerate((hi, lo)):
+        x[66 + 2 * k] = 1.0 if br[r] else 0.0
+        x[67 + 2 * k] = float(sum(1 for q in range(r + 1, 13) if br[q]))
+    for k, cards in enumerate((hero + board, board)):
+        m = 0
+        for c in cards:
+            m |= 1 << (c >> 2)
+        m = m << 1 | m >> 12 & 1  # ace also plays low
+        x[70 + k] = float(max((m >> t & 31).bit_count() for t in range(10)))
+    return x
+
+
+def net_load(text):
+    """[(rows, biases)] per layer, each row its int8 weights times the row's scale; the first layer is stored
+    by input column instead, because most inputs are 0 or 1 and a column is then a plain add."""
+    data = base64.b85decode(text)
+    n = data[0]
+    sizes = struct.unpack_from("<%dH" % (n + 1), data, 1)
+    k = 1 + 2 * (n + 1)
+    layers = []
+    for cols, rows in zip(sizes, sizes[1:]):
+        q = struct.unpack_from("<%db" % (rows * cols), data, k)
+        k += rows * cols
+        scales = struct.unpack_from("<%df" % rows, data, k)
+        biases = struct.unpack_from("<%df" % rows, data, k + 4 * rows)
+        k += 8 * rows
+        layers.append(([[v * s for v in q[r * cols:(r + 1) * cols]] for r, s in enumerate(scales)], list(biases)))
+    if k != len(data):
+        raise ValueError("equity net weights are %d bytes, the header says %d" % (len(data), k))
+    layers[0] = ([list(c) for c in zip(*layers[0][0])], layers[0][1])
+    return layers
+
+
+def net_forward(layers, x):
+    """[win, tie, lose] for features x: ReLU hidden layers, softmax output."""
+    add, mul = operator.add, operator.mul
+    cols, h = layers[0]
+    for v, col in zip(x, cols):
+        if v == 1.0:
+            h = list(map(add, h, col))
+        elif v:
+            h = [a + v * c for a, c in zip(h, col)]
+    for rows, biases in layers[1:]:
+        x = [v if v > 0.0 else 0.0 for v in h]
+        h = [sum(map(mul, row, x)) + b for row, b in zip(rows, biases)]
+    m = max(h)
+    e = [math.exp(v - m) for v in h]
+    s = sum(e)
+    return [v / s for v in e]
+
+
+NET_WEIGHTS = ""
+NET = net_load(NET_WEIGHTS) if NET_WEIGHTS else None
 
 
 # ---- layer 2: opponent model, pasted from model/profiler.py and model/fitted.py
@@ -1202,6 +1306,9 @@ class Agent:
     def _equity(self, hero, board, widths, t0):
         """Chance of winning at showdown against one hand per width, each drawn from that top share."""
         p = self.p
+        if p["equity_net"] and NET:
+            win, tie, _ = net_forward(NET, net_features(hero, board, widths))
+            return win + 0.5 * tie
         trials = p["trials"] if self.spent < p["round_budget_s"] else p["trials"] // 4
         deadline = t0 + p["decision_ms"] / 1000.0
         used = set(hero)

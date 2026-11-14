@@ -1,7 +1,7 @@
 """The equity network and the bot's own Monte Carlo against a large Monte Carlo, and their time per query.
 
-    python3 equity_net/gen_data.py --positions 560 --samples 20000 --seed 9001 --out equity_net/data/eval
-    uv run --python 3.12 python equity_net/evaluate.py --ref equity_net/data/eval --weights equity_net/weights.txt
+    python3 equity_net/gen_data.py --positions 560 --samples 20000 --seed 9001 --out equity_net/data/ref
+    uv run --python 3.12 python equity_net/measure.py --ref equity_net/data/ref --weights equity_net/weights.txt
 
 Postflop positions only, as the bot uses it. The Monte Carlo is bot.Agent._equity at its shipped settings,
 timed back to back with the network on each position, so laptop load affects both alike.

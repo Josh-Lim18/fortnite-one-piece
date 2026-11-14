@@ -2,17 +2,27 @@
 
 Cards are ints as in bot.card: rank * 4 + suit. Widths are each opponent's range as the top share of hands.
 """
-N_FEATURES = 57
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from bot import score  # noqa: E402
+
+N_FEATURES = 72
 
 
 def net_features(hero, board, widths):
     """13 hero rank counts, 13 board rank counts, the flushiest suit (13 board ranks in it, whether each hero
-    card is in it), the other three suits' (hero, board) counts, street one-hot, opponents one-hot, widths sorted.
+    card is in it), the other three suits' (hero, board) counts, street one-hot, opponents one-hot, widths sorted,
+    then what a small net finds hard to derive: our made-hand class, whether each hole card pairs the board and
+    how many board ranks beat it, and the most ranks in one straight window with and without our cards.
     Suits are ordered by their whole content, so renaming suits never changes the output."""
     x = [0.0] * N_FEATURES
+    br = [0] * 13
     for c in hero:
         x[c >> 2] += 1.0
     for c in board:
+        br[c >> 2] += 1
         x[13 + (c >> 2)] += 1.0
     suits = []
     for s in range(4):
@@ -42,4 +52,14 @@ def net_features(hero, board, widths):
     x[51 + len(ws) - 1] = 1.0
     for k, w in enumerate(ws):
         x[54 + k] = w
+    x[57 + ((score(hero + board) >> 20) if board else 1 if hi == lo else 0)] = 1.0  # score needs 5+ cards
+    for k, r in enumerate((hi, lo)):
+        x[66 + 2 * k] = 1.0 if br[r] else 0.0
+        x[67 + 2 * k] = float(sum(1 for q in range(r + 1, 13) if br[q]))
+    for k, cards in enumerate((hero + board, board)):
+        m = 0
+        for c in cards:
+            m |= 1 << (c >> 2)
+        m = m << 1 | m >> 12 & 1  # ace also plays low
+        x[70 + k] = float(max((m >> t & 31).bit_count() for t in range(10)))
     return x

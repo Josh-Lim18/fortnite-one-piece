@@ -22,8 +22,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from features import N_FEATURES, net_features  # noqa: E402
 from infer import net_forward, net_load  # noqa: E402
 
-# Hidden layers; each is 0.1-0.2 ms of laptop time per query (the tournament machine is 10-15x slower).
-SHAPES = ((64, 32), (96, 32), (128, 32))
+# Hidden layers; each is 0.1-0.16 ms of quiet laptop time per query with the encoder (the tournament machine is
+# 10-15x slower); (128, 32) measured 0.23 ms, over budget.
+SHAPES = ((64, 32), (128,), (96, 32))
 
 
 def _load(path):
@@ -40,7 +41,8 @@ def load(folder):
     paths = sorted(glob.glob(os.path.join(folder, "*.jsonl")))
     if not paths:
         sys.exit("no *.jsonl shards in %s" % folder)
-    with multiprocessing.get_context("fork").Pool() as pool:  # spawn would re-import torch in every worker
+    fork = "fork" in multiprocessing.get_all_start_methods()  # spawn re-imports torch in every worker
+    with multiprocessing.get_context("fork" if fork else "spawn").Pool() as pool:
         parts = pool.map(_load, paths)
     x = torch.frombuffer(bytearray(b"".join(p[0] for p in parts)), dtype=torch.float32).view(-1, N_FEATURES)
     y = torch.frombuffer(bytearray(b"".join(p[1] for p in parts)), dtype=torch.float32).view(-1, 3)
