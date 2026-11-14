@@ -41,9 +41,9 @@ Each passes on `bot.py` as uploaded.
 
 ## Time budget (decided Sat 18:00)
 
-Measured: the platform is 10–15x slower than a laptop. v1 used 9.11, 9.87 and 10.03 s of the 10 s round bank, and the last round ran out with 41 forced check/folds. v1-fast used 2.03 s.
+Measured: v1 used 9.11, 9.87 and 10.03 s of the 10 s round bank, and the last round ran out with 41 forced check/folds. v1-fast used 2.03 s (round r024), about 6x its 0.33 s of thread CPU time on a quiet laptop. Laptop load moves the bot onto the M1's slow cores, so absolute laptop times read high; the ratio between two bots timed under the same load holds (v1 / v1-fast: 4.1x busy laptop, ~4.7x platform).
 
-- **Target:** at most 5 s of the 10 s bank on the platform. That is about 0.4 s of the bot's own laptop thinking per 1,000-hand round, measured in-process back to back, with `on_hand_end` included. Lane D's check fails anything above it.
+- **Target:** at most 5 s of the 10 s bank on the platform. Lane D's check times the candidate and v1-fast alternately in-process (thread CPU time in `act` plus `on_hand_end`, one seeded 1,000-hand round each), estimates platform seconds as 2.03 × candidate ÷ v1-fast, and fails anything above 5 s. On a quiet laptop that is about 0.8 s of the bot's own thinking.
 - **Split:**
   - layer 1 (base, including equity) at most 60%;
   - layer 2 (profiling, mostly `on_hand_end`) at most 15%, with incremental updates only and no Monte Carlo;
