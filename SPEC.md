@@ -39,6 +39,19 @@ Each passes on `bot.py` as uploaded.
 - Stacks reset each hand, so there is no survival value: take every profitable all-in.
 - Organisers may switch to pot-limit or fixed-limit or cap raises; every `state` says which.
 
+## Time budget (decided Sat 18:00)
+
+Measured: the platform is 10–15x slower than a laptop. v1 used 9.11, 9.87 and 10.03 s of the 10 s round bank, and the last round ran out with 41 forced check/folds. v1-fast used 2.03 s.
+
+- **Target:** at most 5 s of the 10 s bank on the platform. That is about 0.4 s of the bot's own laptop thinking per 1,000-hand round, measured in-process back to back, with `on_hand_end` included. Lane D's check fails anything above it.
+- **Split:**
+  - layer 1 (base, including equity) at most 60%;
+  - layer 2 (profiling, mostly `on_hand_end`) at most 15%, with incremental updates only and no Monte Carlo;
+  - layer 3 (picker) at most 25%, with at most 3 candidate moves priced per decision, priced only heads-up, cheapest checks first, and one equity estimate reused across sizes.
+- **Equity:** the equity network replaces the Monte Carlo (0.57x the time, mean error 0.026 vs 0.080, no +5-point bias), once ported onto `poker/live` after Anh's fixes.
+- **Time governor:** the bot compares its own thinking so far with its pace for the hands played. Past 1.2x pace it prices fewer picker candidates. Past 1.5x pace it plays the base move only. Past the hard floor (`round_stop_s`) it uses the cheapest estimate. Every step down is a param.
+- **Check after every upload:** download the next round and read `think_s`. Above 6 s, cut the budget.
+
 ## Strategy
 
 - Baseline: tight-aggressive preflop from hand rank and position; postflop from Monte Carlo equity against ranges estimated per seat, compared with pot odds.
