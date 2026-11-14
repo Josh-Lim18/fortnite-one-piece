@@ -129,3 +129,11 @@ Fold to bet is by the size faced as a share of the pot before it; "starter size"
 | YSL_TWIZZY | 3 | 3000 | 4650 | -47 ± 25 | 33% | 27% | 4% | 0% | 18% | 13% / 33% / 42% / 43% / 32% | 2.6 | 0.48 | 0% | 4 / 18 | 41 / 32 |
 | Lehman Brothers | 2 | 2000 | 2958 | -49 ± 35 | 29% | 23% | 5% | 1% | 42% | 35% / 49% / 59% / 65% / 66% | 2.6 | 0.60 | 1% | 24 / 18 | 12 / 13 |
 | ediz_slow | 4 | 4000 | 8897 | -279 ± 55 | 79% | 32% | 24% | 2% | 36% | 32% / 51% / 81% / 92% / 49% | 2.8 | 0.57 | 100% | 80 / 62 | 227 / 150 |
+
+## Why Joca loses: profile vs the winners at our tables (Sat 18:55, 23 real rounds r024–r046, v1-fast and PR #14's bot)
+
+Our numbers: −23.8 bb/100, VPIP 17.5%, PFR 12.5%, postflop aggression factor (raises ÷ calls) 1.18, fold-to-a-postflop-bet 32.6%, showdowns −24.8 bb/100, pots won without showdown +45.9 bb/100.
+
+The eight best teams at our tables (+25 to +63 bb/100) run VPIP 20–35% (about 27), PFR 13–30% (about 19), aggression factor 1.4–7.3 (about 2.9), fold-to-bet 38–63% (about 50%), and win 50–103 bb/100 without showdown (about 80).
+
+So we're tight preflop, passive postflop and sticky when bet into: we rarely take pots with bets, then pay off the field's value bets and lose at showdown. The losing teams with our profile: YSL_TWIZZY (AF 0.78, fold-to-bet 25%) and AIl IN (AF 1.13, fold-to-bet 32%). Our 38 clones (v1-fast +123 against them) miss this: the real field bets with value far more than they do. Script: the orchestrator's scratchpad `why_losing.py`.
