@@ -32,6 +32,14 @@ The design and the skill contract are in the team's Notion operating brief, "Lay
    The randomness already in the bot (size jitter, mixing near thresholds, break-even default bluffs) stays in the base.
 3. Write the picker as above, with every threshold in `PARAMS`.
 
+## Layer 2 fixes the picker needs
+
+The layer 2 builder reported these. You may edit `model/` for them, rerun `fit.py`, and repaste:
+- **Integration:** paste `FITTED` and the profiler code without its import block; create the profiler in `on_table_start`; call `observe_hand(summary, self.seat)` in `on_hand_end`.
+- **Overconfidence:** the type posterior is untempered and reaches 1.000 within 30 hands. That would defeat "back to base when unsure". Temper it (a param) so confidence reflects real evidence, and check held-out log-loss doesn't get worse (`model/evaluate.py`).
+- **Raise size:** situations don't include raise size, so an all-in shover reads as a tight type. Add a raise-size bucket (at least all-in versus not) if the value-shove skill or the shover's read needs it.
+- **Simulated data:** the fitting data is already generated at `<ROOT>/.claude/worktrees/agent-a517cc6b9a8a96f4c/model/sim/` (127 MB, gitignored), where `<ROOT>` is the folder holding `notes/`. Point `fit.py` and `evaluate.py` at it instead of regenerating.
+
 ## Measure
 
 Copy `bot.py` to `tools/baseline_bot.py` first. Report `tools/sim.py --vs tools/baseline_bot.py` (at least 24 rounds each, mean ± standard error) against:
