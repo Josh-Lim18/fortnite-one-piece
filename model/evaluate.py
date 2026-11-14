@@ -73,16 +73,18 @@ def replay(job):
         if bots:
             full = models["full"]
             for seat, bot in enumerate(bots):
+                truth = fitted["bot_type"].get(bot)
+                if truth is None:  # our own seat, or a team the fit never saw
+                    continue
                 w = full.type_posterior(seat)
-                top, truth = max(w), fitted["bot_type"].get(bot)
+                top = max(w)
                 hit = w.index(top) == truth
                 c = calib[sum(top >= e for e in CONF[:-1])]
                 c[0] += top
                 c[1] += hit
                 c[2] += 1
-                if truth is not None:
-                    nll[0] -= math.log(max(w[truth], 1e-12))
-                    nll[1] += 1
+                nll[0] -= math.log(max(w[truth], 1e-12))
+                nll[1] += 1
                 if s["hand_number"] in CHECKPOINTS:
                     m = match.setdefault((bot, s["hand_number"]), [0, 0, 0])
                     m[0] += hit
@@ -123,7 +125,7 @@ def score(fitted, files, temper=TEMPER):
         out["full_vs_" + other] = (mean, se)
     out.update(loss=loss, match=match, calib=calib, type_nll=nll[0] / max(nll[1], 1),
                range_nll=nll[2] / nll[3] if nll[3] else None,
-               calib_gap=max(abs(c - h) / n for c, h, n in calib if n), us_observe=1e6 * t_obs / calls, us_predict=1e6 * t_pred / calls, rounds=len(files))
+               calib_gap=max((abs(c - h) / n for c, h, n in calib if n), default=0.0),us_observe=1e6 * t_obs / calls, us_predict=1e6 * t_pred / calls, rounds=len(files))
     return out
 
 
@@ -161,8 +163,8 @@ def main():
     print("decisions         " + "".join("%12d" % n for _, n in r["loss"]["full"]))
     for other in ("prior", "counts"):
         print("full minus %-6s %+.4f +- %.4f (one standard error, paired by round)" % ((other,) + r["full_vs_" + other]))
-    bots = sorted({b for b, _ in r["match"]})
-    if bots:
+    bots = sorted({b for b, _ in r["match"] if b.endswith(".py")})  # real teams only count toward "all seats"
+    if r["match"]:
         print("\ntop type is the bot's usual type, after hands: " + "".join("%8d" % c for c in CHECKPOINTS))
         for bot in bots + [None]:
             cells = [[r["match"][key] for key in r["match"] if key[1] == c and bot in (None, key[0])] for c in CHECKPOINTS]

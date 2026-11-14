@@ -1,7 +1,7 @@
-"""Fit the layer 2 opponent model on the training rounds of a folder and write model/fitted.py.
+"""Fit the layer 2 opponent model on the training rounds of one or more folders and write model/fitted.py.
 
-    python3 model/fit.py model/sim            # k chosen by held-out log-loss among --ks
-    python3 model/fit.py hands/ --ks 4 5 6
+    python3 model/fit.py hands/ model/sim     # k chosen among --ks on training rounds of the first folder held back
+    python3 model/fit.py model/sim --ks 4 5 6
 """
 import argparse
 import functools
@@ -162,7 +162,9 @@ def describe(f):
 
     print("type share  open f/c/r   vs raise f/c/r  checked-to bet  vs bet f/c/r   bots (seat-rounds)")
     for t, table in enumerate(f["types"]):
-        bots = ", ".join("%s %d" % (os.path.basename(b)[:-3], m[t]) for b, m in sorted(f["members"].items()) if m[t])
+        teams = sum(m[t] for b, m in f["members"].items() if not b.endswith(".py"))
+        bots = ", ".join(["%s %d" % (os.path.basename(b)[:-3], m[t]) for b, m in sorted(f["members"].items())
+                          if m[t] and b.endswith(".py")] + (["real teams %d" % teams] if teams else []))
         print("%4d %5.2f  %3.0f/%3.0f/%3.0f  %4.0f/%3.0f/%3.0f  %8.0f%%      %3.0f/%3.0f/%3.0f   %s" % (
             t, f["type_prior"][t], *[rate(table, groups["open"], a) for a in (0, 1, 2)],
             *[rate(table, groups["vs raise"], a) for a in (0, 1, 2)], rate(table, groups["checked to"], 2),
@@ -171,21 +173,22 @@ def describe(f):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("folder")
-    ap.add_argument("--ks", type=int, nargs="+", default=[4, 5, 6])
+    ap.add_argument("folders", nargs="+")
+    ap.add_argument("--ks", type=int, nargs="+", default=list(range(4, 13)))
     ap.add_argument("--out", default=os.path.join(HERE, "fitted.py"))
     ap.add_argument("--showdown-ranges", action="store_true",
                     help="fit ranges from showdown hands only even when the files keep every dealt hand")
     a = ap.parse_args()
-    train, _ = split(a.folder)
-    val = train[3::4]
+    trains = [split(folder)[0] for folder in a.folders]
+    train = [path for t in trains for path in t]
+    val = trains[0][3::4]
     with multiprocessing.Pool() as p:
         per_round = p.map(functools.partial(summarise, showdown_only=a.showdown_ranges), train)
         sub = [s for path, r in zip(train, per_round) if path not in val for s in r]
         fits = p.starmap(fit, [(sub, k) for k in a.ks])
     seats = [s for r in per_round for s in r]
-    print("%d training rounds, %d opponent seat-rounds; k chosen on %d of those rounds held back" % (
-        len(train), len(seats), len(val)))
+    print("%d training rounds, %d opponent seat-rounds; k chosen on %d of those rounds (from %s) held back" % (
+        len(train), len(seats), len(val), a.folders[0]))
     best = None
     for k, f in zip(a.ks, fits):
         ll = score(f, val)["full"]
@@ -195,6 +198,8 @@ def main():
     f = fit(seats, best[0])
     dealt = not a.showdown_ranges and any(s["dealt"] for s in seats)
     note = DEALT_NOTE if dealt else SHOWDOWN_NOTE
+    if dealt and not all(s["dealt"] for s in seats):
+        note += " Real rounds add their showdown hands only."
     print("chose k=%d; %s" % (best[0], note))
     describe(f)
     print("prior weight in decisions (median over cells): population %.0f, within type %.0f" % (
@@ -205,7 +210,7 @@ def main():
                   '%s\nKeys: pop/types [cell][fold, call, raise]; pop_m/type_m prior weight in decisions per cell;\n'
                   'ranges [type][street][call, raise][strength bucket]; share of decisions per cell; bot_type maps\n'
                   'each training bot to its usual type (for evaluate.py; the profiler ignores it)."""\n'
-                  % (len(seats), os.path.basename(os.path.normpath(a.folder)), best[0], note))
+                  % (len(seats), " + ".join(os.path.basename(os.path.normpath(x)) for x in a.folders), best[0], note))
         out.write("FITTED = " + json.dumps(f, separators=(",", ":")) + "\n")
     print("wrote %s, %d bytes" % (a.out, os.path.getsize(a.out)))
 
