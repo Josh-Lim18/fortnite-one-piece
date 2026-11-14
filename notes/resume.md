@@ -2,6 +2,8 @@
 
 ## RESUMED Sat 15:20
 
+- 18:05: Colin opened PR #12 (`lane-c/v1-autopicker` -> main, 46 files): his own four-layer bot (v1-autopicker; v1-baseline has layers 2–4 off), about 77 KB, compared only against his old bot. Copies are in `notes/colin/`. A lane D agent is evaluating both against v1-fast on the same deals (real clones weighted most), own time against the 0.4 s budget, and the check. Its result goes to Owen, then a PR #12 comment and board post with Owen's OK. PR #11 (consolidated lanes B/C) is open for Josh.
+
 - 17:45: equity network merged on main (tag `equity-net-1`, `equity_net/`, switched on in picker-1's bot.py; MAE 0.026 vs the Monte Carlo's 0.080 with bias +0.052 from keeping one in four out-of-range deals; 0.57x time; +18 KB). The bias is a real base bug in v1-fast (`_equity`, `if t & 3: continue`), posted to Anh on the board. Owen: wait for Anh's v1-fast fixes, THEN port the equity network into `poker/live` (not before).
 
 - 17:30: real-data analysis merged (main 2a1751a): `notes/field-report.md` (names other teams: keep it out of the public repo), `opponents/real/` (38 clones, weaker than the real teams: v1-fast +123 against them), layer 2 refit (k=5; real held-out log-loss prior 0.841, counts 0.671, full 0.667; calibration poor at the top). Against v1-fast on real clones: demo-2 −4.0 ± 2.8 (1.17x time), picker-1 −49.9 ± 6.0 (1.9x). Decision: keep v1-fast. Field: tight-aggressive; bets of a pot or more fold 63–78%, bets under 0.4 pot called 73%; winners don't limp. Posted on the board; layer 2 agent told.
