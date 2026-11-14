@@ -2,6 +2,8 @@
 
 ## RESUMED Sat 15:20
 
+- 17:25: Owen: given the time, build a fuller layer 2 inside v1-fast first (`notes/slice-layer2-live.md`, branch `layer2/live` off `poker-live`, Opus agent, report about 18:50). It keeps the base's read calls (`_seat`, `_rate`, `Seat`, `on_hand_end`) and stays within 1.5x v1-fast's thinking. Colin's v1 auto-picker patch is deferred: the file wasn't provided, so I asked on the board. Its laptop budget (2 ms equity, 5 ms guard) is too loose for the platform. Explainer page agent running (`notes/slice-diagram.md`). Board post 17:23 (plan and time budget).
+
 - 17:15: session "Review Anh's PRs #7, #8, #9, then #5" (local_94faca49-7cb4-4850-8f1b-4b478a101df6, Opus) reviews Anh's PRs, then (Owen's change) consolidates their useful parts into one new PR `consolidate/lanes-bc` -> `main` (helpers in `candidates/improved/`, public bots as benchmark opponents in `candidates/imported/`), and posts on the board. Owen closes the old PRs himself.
 
 - 17:08: pushed (Owen approved) branch `poker/live` = main plus bot.py replaced by v1-fast (commit b0e08f2); posted on the board. Josh (17:02) agreed not to upload advit-lite (too slow for the platform).
