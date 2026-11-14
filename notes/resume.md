@@ -1,5 +1,18 @@
 # Resume note
 
+## PAUSED Sat 14 Nov about 15:00 GMT: 5-hour usage limit
+
+- Running when paused: the layer 3 autopicker agent (`notes/slice-picker.md`), branch `worktree-agent-addff0dd05eab9c99`, worktree `.claude/worktrees/agent-addff0dd05eab9c99`. It was told to commit and report progress. Its report may not have reached anyone: on resume, read that branch's log and diff against `main` first.
+- The picker must include the overconfidence fix with a calibration table (stated top-type confidence within about 0.05 of the actual hit rate on held-out simulated rounds; held-out log-loss no worse). Owen asked for it.
+- Adaption data job launched 14:28 on Owen's account (dataset a8c739b1-2834-463e-afec-b1de538b8168), estimated ready about 16:55; Adaption emails Owen.
+- First steps on resume:
+  1. Check the picker branch; finish or relaunch it on Opus from its brief and the progress it committed.
+  2. Merge it through `scripts/verify.sh` and `team/tests/check_submission.py`.
+  3. Open the finished Adaption dataset and check sample completions still end with our bot's action; then show Owen the AutoScientist training cost before launching.
+  4. If Owen has given the data token: fetch hands, refit layer 2 with 4–12 types (Owen agreed the number should come from held-out score).
+- Uploads close for Saturday at 19:30 and reopen Sunday 09:00–12:00. The recommended upload is still `demo-1` (v1); v2 (`demo-2`) and later are candidates for lane D to judge.
+
+
 Updated Sat 14 Nov 2026, 13:25 GMT. Workflow: `hackathon-build`. Read `SPEC.md` first.
 
 ## Owner decisions
