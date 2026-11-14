@@ -16,7 +16,7 @@ PARAMS = {
     "iso_raise": 0.12,         # big blind raises limpers with this share of hands
     "threebet_r": 0.30,        # re-raise when our hand is in this top share of the raiser's range
     "call_r": 0.85,            # call a raise when in this top share of the raiser's range
-    "call_cap": 0.40,          # ...but never wider than this share of all hands
+    "call_cap": 0.22,          # ...but never wider than this share of all hands
     "big_bet": 0.40,           # a bet this share of the starting stack counts as a shove
     "setmine_cost": 0.05,      # call with any pair when it costs at most this share of the stack
     "value": 0.62,             # bet when equity is above this
@@ -601,7 +601,7 @@ class Agent:
             if eq >= to_call / (state["pot"] + to_call) + p["allin_margin"] - p["risk"]:
                 return {"action": "all_in"}
             return self._passive(state)
-        if raises and "raise" in state["legal_actions"] and self._value_edge(state, cls, raised, entered) >= p["value_edge"]:
+        if "raise" in state["legal_actions"] and self._value_edge(state, cls, raised, entered) >= p["value_edge"]:
             return {"action": "raise", "amount": state["max_raise_to"]}
 
         if raises == 0:
