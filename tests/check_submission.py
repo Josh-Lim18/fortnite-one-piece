@@ -1,6 +1,6 @@
 """The gate before any upload: the constraints the tournament enforces, one line per check.
 
-    python3 tests/check_submission.py BOT.py [--kit PATH] [--hands 1000]
+    python3 tests/check_submission.py BOT.py [--kit PATH] [--hands 1000] [--own-limit 0.4]
 
 Re-runs itself under Python 3.12 (`uv run --python 3.12`), the tournament's version, and exits
 non-zero when any check fails.
@@ -8,14 +8,19 @@ non-zero when any check fails.
 import argparse
 import ast
 import importlib
+import importlib.util
 import os
+import random
 import subprocess
 import sys
+import time
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MAX_BYTES = 200_000
 TIMEOUT_MS, BANK_S = 10.0, 10.0
 MAX_TIMEOUT_SHARE, MAX_THINK_S = 0.01, 5.0
+# The platform runs 10-15x slower than a laptop; 0.4 s of own laptop thinking per 1,000 hands is about 5 s there.
+OWN_LIMIT_S, OWN_SEATS, OWN_SEED = 0.4, 7, 1
 # (betting, raise_cap): every format the organisers can switch on; fixed_limit caps at 4 by default.
 FORMATS = [("no_limit", 0), ("pot_limit", 0), ("fixed_limit", 0), ("no_limit", 3)]
 HOUSE = ["tight_aggressive.py", "calling_station.py", "random_bot.py"]
@@ -55,8 +60,61 @@ def static_checks(path):
     return out
 
 
-def play_checks(path, kit, hands):
-    """Import and construct Agent(), then play one round per format through the kit's subprocess player."""
+def load(path, name):
+    """Import a bot file in this process under its own module name and return its Agent class."""
+    spec = importlib.util.spec_from_file_location(name, path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.Agent
+
+
+def seeded(cls, seed):
+    def make():
+        agent = cls()
+        if hasattr(agent, "rng"):
+            agent.rng = random.Random(seed)
+        return agent
+    return make
+
+
+def own_round(classes, hands):
+    """One seeded no-limit round in-process; returns seat 0's act seconds, on_hand_end seconds and decisions."""
+    from engine import FixedHandsTable
+    from engine.players import LocalPlayer
+    random.seed(OWN_SEED)
+    players = [LocalPlayer(seeded(c, OWN_SEED * 1009 + i)) for i, c in enumerate(classes)]
+    bot, end_s = players[0], [0.0]
+    hand_end = bot.hand_end
+
+    def timed_end(summary):
+        t0 = time.perf_counter()
+        hand_end(summary)
+        end_s[0] += time.perf_counter() - t0
+    bot.hand_end = timed_end
+    FixedHandsTable(players, hands=hands, config={"betting": "no_limit"}, seed=OWN_SEED).play()
+    return bot.stats.total_ms / 1000, end_s[0], bot.stats.decisions
+
+
+def own_check(path, kit, hands, limit):
+    """The bot's own thinking, transport excluded: the lower of two identical rounds against the kit's bots."""
+    try:
+        others = [importlib.import_module(h[:-3]).Agent for h in HOUSE]
+        others.append(load(os.path.join(kit, "bot.py"), "kit_bot"))
+        classes = [load(path, "submission")] + [others[i % len(others)] for i in range(OWN_SEATS - 1)]
+        runs = [own_round(classes, hands) for _ in range(2)]  # the lower total damps noise from other processes
+    except Exception as e:
+        return False, "own thinking: failed in-process: %r" % e
+    act_s, end_s, decisions = min(runs, key=lambda r: r[0] + r[1])
+    total, limit = act_s + end_s, limit * hands / 1000
+    return total <= limit, ("own thinking (in-process, no_limit, %d hands, %d seats, lower of %.3f s and %.3f s): "
+                            "%.3f s = act %.3f s + on_hand_end %.3f s, %d decisions, %.3f ms a decision (limit %.2f s)"
+                            % (hands, OWN_SEATS, sum(runs[0][:2]), sum(runs[1][:2]), total, act_s, end_s,
+                               decisions, 1000 * total / max(decisions, 1), limit))
+
+
+def play_checks(path, kit, hands, own_limit):
+    """Import and construct Agent(), play one round per format through the kit's subprocess player, then time
+    the bot's own thinking in-process."""
     sys.path.insert(0, kit)
     from engine import FixedHandsTable
     from engine.players import LocalPlayer, SubprocessPlayer
@@ -95,7 +153,7 @@ def play_checks(path, kit, hands):
         if st.error_samples:
             line += "\n  first error:\n" + st.error_samples[0]
         out.append((ok, line))
-    return out
+    return out + [own_check(path, kit, hands, own_limit)]
 
 
 def main():
@@ -104,6 +162,8 @@ def main():
     ap.add_argument("bot")
     ap.add_argument("--kit", default=os.path.join(REPO, "kit"), help="the organisers' starter kit (default: kit/)")
     ap.add_argument("--hands", type=int, default=1000, help="hands per round (tournament: 1000)")
+    ap.add_argument("--own-limit", type=float, default=OWN_LIMIT_S,
+                    help="most seconds of in-process own thinking per 1,000 hands (default %(default)s)")
     a = ap.parse_args()
     kit = os.path.abspath(a.kit)
     if not os.path.isfile(os.path.join(kit, "engine", "players.py")):
@@ -114,12 +174,13 @@ def main():
     path = os.path.abspath(a.bot)
 
     results = static_checks(path)
-    results += play_checks(path, kit, a.hands)
+    results += play_checks(path, kit, a.hands, a.own_limit)
     for ok, line in results:
         print("%s  %s" % ("PASS" if ok else "FAIL", line))
     failed = sum(not ok for ok, _ in results)
-    print("Limits: errors 0, timeouts at most %.0f%% of decisions, at most %.0f s thinking a round (bank %.0f s)."
-          % (100 * MAX_TIMEOUT_SHARE, MAX_THINK_S, BANK_S))
+    print("Limits: errors 0, timeouts at most %.0f%% of decisions, at most %.0f s thinking a round (bank %.0f s), "
+          "at most %.2f s own thinking per 1,000 hands in-process (act plus on_hand_end)."
+          % (100 * MAX_TIMEOUT_SHARE, MAX_THINK_S, BANK_S, a.own_limit))
     print("This laptop is not the tournament sandbox (one CPU core, 512 MB, sealed container): "
           "timings here are a guide, not a guarantee.")
     print("%s: %s" % (a.bot, "%d check(s) failed" % failed if failed else "all checks passed"))
