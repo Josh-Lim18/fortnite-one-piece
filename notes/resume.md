@@ -2,6 +2,9 @@
 
 ## RESUMED Sat 15:20
 
+- 15:48: picker merged as tag `picker-1` (main). Three layers in bot.py (86 KB): profiler with k=9 personalities fitted from all dealt hands in sim, tempered (0.05; calibration 0.31→0.53 and 0.90→0.95 still miss), autopicker with value shove, bluff, multi-street plan, call shover, barreller. Passes check_submission (0 errors, worst 2.9 ms, ≤1 s a round). Against v2 on the same deals (24 rounds, bb/100): house −53 ± 38 (earlier run +11 ± 43), house+starter +19 ± 42, starter +7 ± 11, opponents −11 ± 8. Not better: upload stays v1. Ablation shows the exploits carry the value: base alone −253 vs house, −32 vs opponents. Gaps: preflop base unpriced, call-shover not tracked, multiway crude, untuned.
+- Owen's team had NO bot live at 15:28. v1 exported to ~/Downloads/poker-v1/bot.py (passes check); Owen to upload (or Josh) by 18:20 at the latest to reach 12 counted rounds. Message for Josh drafted in chat. `poker/bot` on GitHub still holds v0.
+
 - Picker relaunched on Opus at 15:25 from `notes/slice-picker.md` (now with the multi-street value plan, calibration and k 4–12 follow-ups), merging the paused branch `worktree-agent-addff0dd05eab9c99` first.
 - Standings at 15:25 (counted round 5 of 54): 39 teams; leaders about +90 bb/100; most between −45 and +45. With 39 teams at 7–8 seats there are few or no empty seats, so few house bots: the real field is team bots, and gains measured against house bots overstate us. Our team's name on the standings is unknown (not "fortnite-one-piece").
 
