@@ -1,6 +1,6 @@
 # Slice: layer 3 autopicker
 
-**Files you own:** `bot.py`, `tools/test_bot.py`, `tools/baseline_bot.py`, `model/` (only to paste the profiler and its fitted constants in; report any change to them). **Time box:** 90 minutes. Starts only after the layer 2 model slice (`notes/slice-model.md`) is merged.
+**Files you own:** `bot.py`, `tools/test_bot.py`, `tools/baseline_bot.py`, `model/` (only to paste the profiler and its fitted constants in; report any change to them). **Time box:** 120 minutes. Starts only after the layer 2 model slice (`notes/slice-model.md`) is merged.
 
 The design and the skill contract are in the team's Notion operating brief, "Layer 3: the autopicker and the skill contract", copied here so you don't need Notion:
 
@@ -37,7 +37,33 @@ The design and the skill contract are in the team's Notion operating brief, "Lay
 
    Both need the shover and the barreller to be read within a few hands: count all-ins and bets-when-checked-to directly per seat, as well as through the personality types (the types still miss the shover).
 
+## Multi-street value plan (Owen)
+
+Pricing one street at a time undervalues smaller bets with a strong hand: a bet that keeps a medium hand calling can set up bets on the turn and river that add up to more than one big bet now. So when we bet or raise for value, also price a plan:
+
+- **The geometric plan:** the same pot fraction f on every street left, chosen so the stack is all in by the river. With pot P, effective stack S and n streets left, f = (((P + 2S) / P) ^ (1/n) − 1) / 2. From a typical flop pot at 100 big blinds that is about ¾ pot.
+- **Price it across the streets left:** at each street, the opponent continues with its call chance at that size (layer 2's response curve), and its continuing range narrows by that rate. Our equity against what is still in comes from the base equity function against the narrowed range. Ignore our own future draws improving or fading beyond what the equity function already prices. The plan's value is the sum over streets of the chips won.
+- **Compare three options:** the plan, shoving now, and the best one-street size. The picker plays the best, with the usual softmax over near-ties.
+
+Keep the cost inside the time budget: at most about three equity queries per decision for this. Reuse one equity estimate and adjust it by the narrowing if a fresh query per street is too slow. Report the time per decision.
+
+Test (add to `tools/test_bot.py`):
+- With a very strong hand against a seat that calls small and medium bets but folds to big ones, the bot bets the plan size on the flop rather than shoving.
+- Against a seat that calls everything, it shoves.
+
 ## Layer 2 fixes the picker needs
+
+**Already done** on branch `worktree-agent-addff0dd05eab9c99` (commits 02b8543, 16956ec; merge it into your branch first):
+- the stack-off size bucket;
+- a tempered type posterior with `TEMPER = 0.05`;
+- a calibration table in `evaluate.py`;
+- a refit.
+
+Still to do:
+- **Calibration:** two buckets miss the target (stated 0.35 vs actual 0.43, stated 0.71 vs actual 0.65), and 0.05 was the smallest temper tried. Search lower values on the fitting rounds until every bucket is within about 0.05 on held-out rounds, or report the best reached.
+- **Type count:** search k from 4 to 12 on held-out log-loss (k=6 was the top of the old range and still improving); keep the best.
+- **Tests:** rerun `model/test_model.py`; it was not run after those commits.
+
 
 The layer 2 builder reported these. You may edit `model/` for them, rerun `fit.py`, and repaste:
 - **Integration:** paste `FITTED` and the profiler code without its import block; create the profiler in `on_table_start`; call `observe_hand(summary, self.seat)` in `on_hand_end`.
