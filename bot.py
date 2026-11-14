@@ -20,12 +20,14 @@ PARAMS = {
     "setmine_cost": 0.05,      # call with any pair when it costs at most this share of the stack
     "value": 0.62,             # bet when equity is above this
     "big_value": 0.80,         # bet big / raise when equity is above this
-    "bet_frac": 0.66,
-    "big_bet_frac": 0.90,
+    "bet_frac": 0.66,          # the one postflop bet size, as a share of the pot, for value and bluffs alike
+    "size_jitter": 0.10,       # every chosen raise size is scaled by a random factor within this share
+    "mix_band": 0.03,          # within this distance of a threshold, mix the two actions with a sliding chance
     "call_margin": 0.06,       # equity needed beyond pot odds against a constant bettor
     "passive_margin": 0.16,    # extra equity needed against a seat that rarely bets
-    "bluff_fold_rate": 0.55,   # bluff heads-up only when the seat folds to bets this often
-    "bluff_freq": 0.60,
+    "bluff_fold_rate": 0.55,   # a seat folding to bets this often gets bluffed at bluff_freq
+    "bluff_freq": 0.60,        # otherwise bluffs make calling us break-even: B / (P + 2B) of our bets
+    "prior_value_share": 0.40, # prior share of our bluff spots in which we hold a value bet
     "risk": 0.0,               # added to every stack-off threshold; raise it to chase variance
     "prior_hands": 12.0,       # how many hands of "average player" each seat's stats start with
     "prior_vpip": 0.30,
@@ -398,6 +400,7 @@ class Agent:
         self.stack = 2000
         self.bb = 20
         self.spent = 0.0
+        self.spots = self.spots_value = 0  # heads-up bluff spots seen, and those where we held a value bet
         gc.disable()  # a collection pause can blow the 10 ms limit
 
     def on_table_start(self, info):
@@ -506,7 +509,16 @@ class Agent:
         target = int(target)
         if target >= 0.6 * hi:
             target = hi  # past this point a fold later is never right, so commit now
+        elif target > lo:
+            j = self.p["size_jitter"]  # stops other bots fingerprinting us by a sizing formula
+            target = int(target * (1.0 + self.rng.uniform(-j, j)))
         return {"action": "raise", "amount": max(lo, min(target, hi))}
+
+    def _over(self, x, line):
+        """x >= line, except within mix_band of the line, where the chance slides linearly from 0 to 1."""
+        band = self.p["mix_band"]
+        d = x - line
+        return d >= band or (d > -band and self.rng.random() < (d + band) / (2.0 * band))
 
     def _preflop(self, state):
         p = self.p
@@ -536,7 +548,7 @@ class Agent:
         if committed:
             # Equity against the raiser's estimated range (and each caller holding the same) against the pot odds.
             eq = range_equity(TABLE, WEIGHTS, cls, self._raise_width(raiser, raises, top_bet)) ** (1 + callers_of_raise)
-            if eq >= to_call / (state["pot"] + to_call) + p["allin_margin"] - p["risk"]:
+            if self._over(eq, to_call / (state["pot"] + to_call) + p["allin_margin"] - p["risk"]):
                 return {"action": "all_in"}
             return self._passive(state)
         if "raise" in state["legal_actions"] and self._value_edge(state, cls, raised, entered) >= p["value_edge"]:
@@ -546,19 +558,19 @@ class Agent:
             behind = (state["button"] - me) % n
             behind = 1 if behind == n - 1 else 0 if behind == n - 2 else behind + 2
             limit = p["iso_raise"] if behind == 0 else p["open"].get(behind, 0.12)
-            if pct <= limit:
+            if self._over(limit, pct):
                 return self._raise(state, (p["open_bb"] + limpers) * bb)
             return self._passive(state)
 
         width = self._raise_width(raiser, raises, top_bet)
         depth = pct / width  # 0 = top of the raiser's range, 1 = its bottom
         crowd = 0.7 ** callers_of_raise  # callers behind a raise hold real hands too
-        if depth <= p["threebet_r"] * crowd:
+        if self._over(p["threebet_r"] * crowd, depth):
             return self._raise(state, top_bet * 3 + to_call * callers_of_raise)
         cheap = to_call <= p["setmine_cost"] * self.stack
         if cheap and (c1 >> 2) == (c2 >> 2):
             return self._call(state)
-        if to_call <= 0.08 * self.stack and pct <= min(p["call_r"] * width, p["call_cap"]):
+        if to_call <= 0.08 * self.stack and self._over(min(p["call_r"] * width, p["call_cap"]), pct):
             return self._call(state)
         return self._passive(state)
 
@@ -631,33 +643,39 @@ class Agent:
         eq = self._equity(hero, board, widths, t0)
 
         if to_call == 0:
-            # A seat that never folds pays off thinner value and bigger bets, and is never bluffed.
+            # A seat that never folds pays off thinner value, is never bluffed, and gets every bet as an all-in,
+            # so our size on a street depends only on the seats, never on our hand.
             sticky = max(self._sticky(self._seat(i)) for i in live) if live else 0.0
             frac = p["bet_frac"] + sticky * (1.0 - p["bet_frac"])
-            if sticky >= 0.5 and eq >= p["sticky_allin"] and "raise" in state["legal_actions"]:
-                return {"action": "raise", "amount": state["max_raise_to"]}
-            if eq >= p["big_value"]:
-                return self._raise(state, max(bets) + max(p["big_bet_frac"], frac) * pot)
-            if eq >= p["value"] - sticky * (p["value"] - p["sticky_value"]):
-                return self._raise(state, max(bets) + frac * pot)
-            if len(live) == 1 and me in raised_pre and sticky == 0.0:
+            spot = len(live) == 1 and me in raised_pre
+            self.spots += spot
+            if self._over(eq, p["value"] - sticky * (p["value"] - p["sticky_value"])):
+                self.spots_value += spot
+                return self._raise(state, state["max_raise_to"] if sticky >= 0.5 else max(bets) + frac * pot)
+            if spot and sticky == 0.0:
                 s = self._seat(live[0])
                 fold_rate = self._rate(s.folds, s.folds + s.continues, p["prior_fold"])
-                if fold_rate >= p["bluff_fold_rate"] and self.rng.random() < p["bluff_freq"]:
+                # Break-even mix: bluffs / bets = B / (P + 2B), given how often our bets here are value.
+                f = frac / (1.0 + 2.0 * frac)
+                v = min(self._rate(self.spots_value, self.spots, p["prior_value_share"]), 0.95)
+                freq = f * v / ((1.0 - f) * (1.0 - v))
+                if fold_rate >= p["bluff_fold_rate"]:
+                    freq = max(freq, p["bluff_freq"])
+                if self.rng.random() < freq:
                     return self._raise(state, max(bets) + frac * pot)
             return self._passive(state)
 
         odds = to_call / (pot + to_call)
         s = self._seat(bettor) if bettor >= 0 else Seat()
-        if (bettor >= 0 and self._sticky(s) >= 0.5 and eq >= p["sticky_allin"]
+        if (bettor >= 0 and self._sticky(s) >= 0.5 and self._over(eq, p["sticky_allin"])
                 and "raise" in state["legal_actions"]):
             return {"action": "raise", "amount": state["max_raise_to"]}
         aggr = self._rate(s.bets, s.bets + s.passive, p["prior_aggr"])
         size = min(1.0, to_call / max(pot - to_call, 1))
         need = odds + p["call_margin"] + p["passive_margin"] * (1.0 - aggr) * size
-        if eq >= p["big_value"] + 0.5 * p["passive_margin"] * (1.0 - aggr):
+        if self._over(eq, p["big_value"] + 0.5 * p["passive_margin"] * (1.0 - aggr)):
             return self._raise(state, max(bets) + 0.75 * (pot + to_call))
-        if eq >= need - p["risk"]:
+        if self._over(eq, need - p["risk"]):
             return self._call(state)
         return self._passive(state)
 
