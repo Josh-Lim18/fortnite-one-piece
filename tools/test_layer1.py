@@ -119,11 +119,11 @@ def _stations(a, seats):
         s.hands, s.pf_faced, s.pf_called, s.shove_faced, s.shove_called = 200, 50, 50, 50, 50
 
 
-def test_no_value_shove_in_an_unopened_pot():
+def test_value_shove_fires_in_an_unopened_pot_against_stations():
+    # Restricting it to raised pots lost 21.0 +/- 3.6 bb/100 on the real-team clones.
     a = _agent()
     _stations(a, [s for s in range(SEATS) if s != 3])
-    move = a.act(_preflop(["As", "Ah"], 3, _blinds(1, 2), {1: 10, 2: 20}))
-    assert move["action"] == "raise" and move["amount"] < 2000, move
+    assert a.act(_preflop(["As", "Ah"], 3, _blinds(1, 2), {1: 10, 2: 20})) == {"action": "raise", "amount": 2000}
 
 
 def test_value_shove_still_fires_against_a_raise():
@@ -138,7 +138,7 @@ def test_calls_a_cheap_raise_from_a_loose_raiser_inside_call_cap():
     raiser = a._seat(0)
     raiser.hands, raiser.pfr = LOOSE_RAISER_HANDS, LOOSE_RAISER_RAISES
     hist = _blinds(1, 2) + [{"seat": 0, "street": "preflop", "action": "raise", "amount": 60}]
-    hand = ["Ts", "8s"]
+    hand = ["Qs", "9s"]
     assert bot.hand_pct(*(bot.card(c) for c in hand)) < a.p["call_cap"]
     assert a.act(_preflop(hand, 2, hist, {0: 60, 1: 10, 2: 20})) == {"action": "call"}
 

@@ -44,7 +44,6 @@ Each passes on `bot.py` as uploaded.
 - Baseline: tight-aggressive preflop from hand rank and position; postflop from Monte Carlo equity against ranges estimated per seat, compared with pot odds.
 - Every assumption about an opponent is adaptive: it comes from that seat's measured behaviour this round, shrunk toward a table-wide or prior rate while evidence is thin, decayed so a change of style is re-read, and capped so a wrong read costs little.
 - Exploits, each used against a seat only while its measured responses say it profits: wide value bets and all-ins against seats that don't fold; bet sizes chosen from the seat's response curve, from tiny bets to overbets, and with strong hands a multi-street plan (the same pot fraction each street, all in by the river) priced against shoving now; barrels against seats that fold to repeated bets; check-raises against seats that bet when checked to; light re-raises against raisers that fold to them; exact-range reads of bots whose bet-size formula fingerprints them.
-- Preflop all-in for value only against a raise: in an unopened pot it is rarely called, so it wins only the blinds that a normal raise would also win.
 - Postflop equity samples opponents' hands only from inside their estimated ranges: an out-of-range deal is redrawn, never counted.
 - Our bet size on a street never depends on bluffing or hand strength, and carries small random jitter.
 - Not doing: deliberate mid-round style switches.
