@@ -2,6 +2,8 @@
 
 ## RESUMED Sat 15:20
 
+- 17:08: pushed (Owen approved) branch `poker/live` = main plus bot.py replaced by v1-fast (commit b0e08f2); posted on the board. Josh (17:02) agreed not to upload advit-lite (too slow for the platform).
+
 - 17:05: v1 (Joca v3) used 9.11, 9.87, then 10.03 s with 41 bank-outs (round 23). v1-fast (Joca v4) used 2.03 s, 0 timeouts in round 24 (−46.2, one round). Josh (board, 16:59) made Owen's bot the team's main bot over advit-lite and asked for v1's commit: answered on the board (59bbb28; use v1-fast instead). Anh's PRs #7 and #8 (lane C, `candidates/improved/`) ask Owen or Colin to review. v1-fast isn't on GitHub yet; Owen chooses whether to send it or push it.
 
 - 17:00: layer 1 (base strategy) is now Anh's (Owen's call). Anh has found errors in the live bot and is fixing v1-fast himself. Our role: layer 2 (Owen) and lane D, so gate Anh's fixed file (check_submission, thinking time no higher than v1-fast's, same-deals comparison against v1-fast and the real-team clones) before Owen or Anh uploads. The equity network is offered to Anh as an optional layer 1 part. Notion updated.
