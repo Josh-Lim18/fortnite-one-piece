@@ -39,3 +39,20 @@ kwargs = { seed = 7 }
 [bots.example-json]
 type = "command"
 command = ["{python}", "examples/json_bot.py"]
+
+# ---- advit_lite: advitrocks9 converted to the AlgoSoc rules ----
+# The submission: one standard-library bot.py, built by `uv run python tools/build_advit_lite.py`.
+[bots.advit-lite]
+type = "agent"
+path = "dist/advit_lite/bot.py"
+time_limit_ms = 10
+
+# The original advitrocks9 (MIT, Advit Arora), the reference advit-lite is tested against. Needs numpy + eval7.
+[bots.advitrocks9]
+type = "command"
+command = ["{python}", "bots/hosts/fullhouse_host.py", "bots/advitrocks9/bot/bot.py"]
+
+# The original under the AlgoSoc rule: a decision over 10 ms is discarded (check/fold).
+[bots.advitrocks9-10ms]
+type = "command"
+command = ["{python}", "bots/hosts/fullhouse_host.py", "bots/advitrocks9/bot/bot.py", "--limit-ms", "10"]
