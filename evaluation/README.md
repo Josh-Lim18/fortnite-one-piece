@@ -38,10 +38,11 @@ only on a candidate you would ship.
   round. It fails on any error, timeouts above 1% of decisions, any bank-out, or more than 5 s of thinking in a
   round (subprocess wall time, transport included). Then it times the bot's own thinking in-process, transport
   excluded: one seeded no-limit round at a 7-seat table against the kit's example bots and `kit/bot.py`, played
-  twice back to back, summing `perf_counter` time in `act` and `on_hand_end`. It fails when the lower of the two
-  totals is over `--own-limit` (default 0.4 s per 1,000 hands, scaled to `--hands`), and prints the act and
-  on_hand_end split and the mean per decision. The platform ran 10-15x slower than a laptop, so 0.4 s here is
-  about the team's 5 s target there; on a laptop busy with other work the number reads high. It does **not**
+  twice back to back, summing the thread's CPU time (`time.thread_time`) in `act` and `on_hand_end`. It fails
+  when the lower of the two totals is over `--own-limit` (default 0.4 s per 1,000 hands, scaled to `--hands`),
+  and prints the act and on_hand_end split and the mean per decision. The platform ran 10-15x slower than a
+  laptop, so 0.4 s here is about the team's 5 s target there. CPU time, unlike wall time, barely moves when the
+  laptop is busy with other work. It does **not**
   prove the bot is safe in the sandbox: that is one CPU core, 512 MB and a sealed container, and this laptop
   is none of those. It does not check memory, CPU use between turns, or behaviour
   against opponents other than the house bots.

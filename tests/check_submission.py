@@ -78,21 +78,25 @@ def seeded(cls, seed):
 
 
 def own_round(classes, hands):
-    """One seeded no-limit round in-process; returns seat 0's act seconds, on_hand_end seconds and decisions."""
+    """One seeded no-limit round in-process; returns seat 0's act CPU seconds, on_hand_end CPU seconds and decisions."""
     from engine import FixedHandsTable
     from engine.players import LocalPlayer
     random.seed(OWN_SEED)
     players = [LocalPlayer(seeded(c, OWN_SEED * 1009 + i)) for i, c in enumerate(classes)]
-    bot, end_s = players[0], [0.0]
-    hand_end = bot.hand_end
+    bot, spent = players[0], {"act": 0.0, "end": 0.0}
 
-    def timed_end(summary):
-        t0 = time.perf_counter()
-        hand_end(summary)
-        end_s[0] += time.perf_counter() - t0
-    bot.hand_end = timed_end
+    # Thread CPU time, not wall time: other work on the laptop inflated wall time 3x and flipped the verdict.
+    def timed(name, fn):
+        def run(arg):
+            t0 = time.thread_time()
+            try:
+                return fn(arg)
+            finally:
+                spent[name] += time.thread_time() - t0
+        return run
+    bot.act, bot.hand_end = timed("act", bot.act), timed("end", bot.hand_end)
     FixedHandsTable(players, hands=hands, config={"betting": "no_limit"}, seed=OWN_SEED).play()
-    return bot.stats.total_ms / 1000, end_s[0], bot.stats.decisions
+    return spent["act"], spent["end"], bot.stats.decisions
 
 
 def own_check(path, kit, hands, limit):
