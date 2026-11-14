@@ -1,6 +1,6 @@
 # Slice: bet-size reads and robust profiling
 
-**Files you own:** `bot.py`, `tools/test_bot.py`, `tools/baseline_bot.py`, `opponents/switcher.py`. **Time box:** 75 minutes. Starts only after the strategy slice is merged, since both edit `bot.py`.
+**Files you own:** `bot.py`, `tools/test_bot.py`, `tools/baseline_bot.py`, `opponents/switcher.py`. **Time box:** 100 minutes. Starts only after the strategy slice is merged, since both edit `bot.py`.
 
 Owen's two ideas, made concrete.
 
@@ -24,9 +24,21 @@ An opponent may play out of type on purpose, or change strategy mid-round. Inten
 
 `opponents/switcher.py`: plays like `opponents/nit.py` for the first 300 hands of a round, then like `opponents/maniac.py`.
 
+## 3. Is a seat's behaviour random or strategic? (Owen)
+
+We never need its intent, only whether its actions predict its cards. Measure that from showdowns, where we see the cards of every seat at the table, not just ours.
+
+- Per seat, for every showdown it reaches, score how strong its shown hand was on that board (its hand's percentile among all hands it could hold there), split by whether it bet or raised on the later streets or only checked and called. The gap between the two averages is the seat's informativeness: near zero for a random bot, large for a strategic one.
+- Start every seat at the population's informativeness (most bots are strategic) and let showdowns move it, with the same shrinkage and decay as the other rates. Then blend each seat's estimated range between "the top share of hands its frequencies imply" and "any two cards" by its informativeness. Today the bot assumes every seat's actions follow hand strength, which is wrong for random bots and costs us calls.
+- The baseline plays soundly while this is uncertain, so learning bleeds little; aim to read `kit/examples/random_bot.py` as uninformative within about 25 of its showdowns.
+
+## 4. Fix the tight-table regression
+
+The strategy slice loses 17 ± 7 bb/100 against an all-tight table (`opponents/equity_tag.py` plus `kit/examples/tight_aggressive.py`) compared with the first bot; its builder put most of that on the new preflop value raises. Make those raises depend on the measured calling rates of the seats still to act (the adaptive rule in SPEC.md, Strategy), so they fire against callers and not against tight seats.
+
 ## Measure
 
-Copy `bot.py` to `tools/baseline_bot.py` first. Report `tools/sim.py --vs tools/baseline_bot.py` (at least 24 rounds each, mean ± standard error) against: `kit/bot.py` only; `kit/examples/*.py` plus `kit/bot.py`; `opponents/*.py` plus `opponents/switcher.py`. The first must improve clearly; none may get worse beyond the error bars. Then `python3 kit/local_sim.py bot.py --rounds 2`: errors and thinking time.
+Copy `bot.py` to `tools/baseline_bot.py` first. Report `tools/sim.py --vs tools/baseline_bot.py` (at least 24 rounds each, mean ± standard error) against: `kit/bot.py` only; `kit/examples/*.py` plus `kit/bot.py`; `opponents/*.py` plus `opponents/switcher.py`; the tight table above; `kit/examples/random_bot.py` plus `opponents/equity_tag.py`. The first must improve clearly, the tight table must reach at least zero; none may get worse beyond the error bars. Also report how many showdowns the random bot needed before its informativeness read below a third of the population's. Then `python3 kit/local_sim.py bot.py --rounds 2`: errors and thinking time.
 
 ## Test
 

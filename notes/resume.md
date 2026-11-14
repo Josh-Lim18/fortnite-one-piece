@@ -22,11 +22,11 @@ Updated Sat 14 Nov 2026, 13:25 GMT. Workflow: `hackathon-build`. Read `SPEC.md` 
 | Slice | Brief | Model | Branch | State |
 |---|---|---|---|---|
 | Simulator and tuner | `notes/slice-sim.md` | Sonnet | merged | on main, verify READY |
-| Strategy (`bot.py`) | `notes/slice-strategy.md` | Opus | its own worktree | running |
+| Strategy (`bot.py`) | `notes/slice-strategy.md` | Opus | merged, tag `demo-1` | sent to Owen to upload |
 | Opponent pool and analyser | `notes/slice-opponents.md` | Fable | merged | on main |
 | Preflop matchup table | `notes/slice-matchups.md` | Sonnet | merged | on main; strategy agent told |
 | Adaption dataset | `notes/slice-adaption-data.md` | Opus | merged | on main; data in `adaption/data/` (gitignored), sent to Owen |
-| Bet-size reads, robust profiling | `notes/slice-reads.md` | Opus | not started | launch after strategy merges (same file) |
+| Bet-size reads, robust profiling, random-vs-strategic, tight fix | `notes/slice-reads.md` | Opus | its own worktree | running since 13:32 |
 | Adaptive pressure moves | `notes/slice-pressure.md` | Opus | not started | launch after reads merges (same file) |
 | Adaption platform research | prompt only, read-only | Opus | none | reported; facts below |
 
@@ -59,3 +59,4 @@ Merge rule: in the agent's worktree `git merge main`, run `scripts/verify.sh`, t
 | Opponent pool | Fable | 189k | 18 min; READY; local: bot +343, starter +711 over 2 rounds (noisy); clone postflop rough; real hand-file shape unverified |
 | Matchup table | Sonnet | 90k | 19 min; 20 KB table; AA range floor test moved to width 0.05 |
 | Adaption dataset | Opus | 119k | 12 min; 10,821 train + 1,179 eval rows, 18.7 MB; terse completions (action only) |
+| Strategy | Opus | 146k | 17 min; vs v0: +176 house, +128 house+starter, +40 starter, +27 ± 13 competent mix, −17 ± 7 tight-only (orchestrator's runs for the last two) |
