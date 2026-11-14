@@ -2,6 +2,8 @@
 
 ## RESUMED Sat 15:20
 
+- 17:15: session "Review Anh's PRs #7, #8, #9, then #5" (local_94faca49-7cb4-4850-8f1b-4b478a101df6, Opus) reviews Anh's PRs, then (Owen's change) consolidates their useful parts into one new PR `consolidate/lanes-bc` -> `main` (helpers in `candidates/improved/`, public bots as benchmark opponents in `candidates/imported/`), and posts on the board. Owen closes the old PRs himself.
+
 - 17:08: pushed (Owen approved) branch `poker/live` = main plus bot.py replaced by v1-fast (commit b0e08f2); posted on the board. Josh (17:02) agreed not to upload advit-lite (too slow for the platform).
 
 - 17:05: v1 (Joca v3) used 9.11, 9.87, then 10.03 s with 41 bank-outs (round 23). v1-fast (Joca v4) used 2.03 s, 0 timeouts in round 24 (−46.2, one round). Josh (board, 16:59) made Owen's bot the team's main bot over advit-lite and asked for v1's commit: answered on the board (59bbb28; use v1-fast instead). Anh's PRs #7 and #8 (lane C, `candidates/improved/`) ask Owen or Colin to review. v1-fast isn't on GitHub yet; Owen chooses whether to send it or push it.
