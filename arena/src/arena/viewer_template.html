@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Poker Arena Replay</title>
+<style>
+  :root {
+    --bg: #0f1412; --panel: #18201c; --line: #2a3530; --text: #e8efe9; --muted: #93a39a;
+    --felt: #1d5c3f; --felt-edge: #123b29; --gold: #e2b84a; --red: #d9534f; --win: #4cc38a; --lose: #e06c6c;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { padding: 16px 24px; border-bottom: 1px solid var(--line); display: flex; gap: 16px; align-items: baseline; flex-wrap: wrap; }
+  header h1 { font-size: 18px; margin: 0; }
+  header .meta { color: var(--muted); }
+  main { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; padding: 16px 24px; }
+  @media (max-width: 960px) { main { grid-template-columns: 1fr; padding: 16px; } }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .panel h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 8px; }
+  table.lb { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  table.lb th, table.lb td { padding: 4px 6px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  table.lb th:first-child, table.lb td:first-child { text-align: left; }
+  table.lb th { color: var(--muted); font-weight: 500; font-size: 12px; }
+  .pos { color: var(--win); } .neg { color: var(--lose); }
+  .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  button, select, input[type=number] { background: #222c27; color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; font: inherit; }
+  button:hover { border-color: var(--gold); cursor: pointer; }
+  button.primary { background: var(--gold); color: #1a1405; border-color: var(--gold); font-weight: 600; }
+  .stage { position: relative; width: 100%; aspect-ratio: 16 / 9; min-height: 320px; }
+  .felt { position: absolute; inset: 12% 10%; border-radius: 999px; background: radial-gradient(ellipse at center, #237049 0%, var(--felt) 60%, var(--felt-edge) 100%);
+          border: 10px solid #3b2a1a; box-shadow: inset 0 0 40px rgba(0,0,0,.45), 0 10px 30px rgba(0,0,0,.4); }
+  .center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); text-align: center; }
+  .pot { color: var(--gold); font-weight: 700; margin-top: 8px; font-variant-numeric: tabular-nums; }
+  .street { color: #cfe3d6; font-size: 12px; text-transform: uppercase; letter-spacing: .1em; margin-bottom: 6px; }
+  .cards { display: flex; gap: 4px; justify-content: center; min-height: 52px; }
+  .card { width: 36px; height: 50px; border-radius: 5px; background: #fdfdfb; color: #1b1b1b; display: flex; flex-direction: column; align-items: center; justify-content: center;
+          font-weight: 700; font-size: 15px; line-height: 1; box-shadow: 0 2px 4px rgba(0,0,0,.35); }
+  .card .s { font-size: 16px; }
+  .card.red { color: #c62828; }
+  .card.back { background: repeating-linear-gradient(45deg, #2b4a8b, #2b4a8b 4px, #335aa6 4px, #335aa6 8px); }
+  .seat { position: absolute; transform: translate(-50%, -50%); width: 150px; text-align: center; transition: opacity .2s; }
+  .seat .box { background: rgba(10,14,12,.88); border: 2px solid var(--line); border-radius: 10px; padding: 6px 8px; }
+  .seat.acting .box { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(226,184,74,.25); }
+  .seat.folded { opacity: .42; }
+  .seat.winner .box { border-color: var(--win); }
+  .seat .name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .seat .stack { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; }
+  .seat .tags { font-size: 11px; color: var(--gold); min-height: 14px; }
+  .seat .cards { min-height: 0; margin-bottom: 4px; }
+  .seat .card { width: 30px; height: 42px; font-size: 13px; }
+  .seat .bet { margin-top: 4px; font-size: 12px; color: var(--gold); min-height: 16px; font-variant-numeric: tabular-nums; }
+  .seat .act { display: inline-block; margin-top: 2px; font-size: 12px; padding: 1px 8px; border-radius: 999px; background: #2a3530; min-height: 18px; }
+  .seat .act:empty { visibility: hidden; }
+  .seat .act.raise { background: #6b4b10; color: #ffe2a0; } .seat .act.fold { background: #4a2323; color: #f2b7b7; }
+  .seat .delta { font-weight: 700; font-variant-numeric: tabular-nums; min-height: 18px; }
+  .log { max-height: 420px; overflow: auto; font-variant-numeric: tabular-nums; }
+  .log div { padding: 3px 6px; border-radius: 4px; color: var(--muted); }
+  .log div.cur { background: #2a3530; color: var(--text); }
+  .log .st { color: var(--gold); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; margin-top: 6px; }
+  .side { display: flex; flex-direction: column; gap: 16px; }
+  .hint { color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Poker Arena Replay</h1>
+  <span class="meta" id="meta"></span>
+</header>
+<main>
+  <section>
+    <div class="panel">
+      <div class="controls">
+        <select id="matchup" title="Filter by line-up"></select>
+        <button id="prevHand" title="Previous hand (Shift+←)">◀ Hand</button>
+        <span id="handLabel" class="hint"></span>
+        <button id="nextHand" title="Next hand (Shift+→)">Hand ▶</button>
+        <button id="back" title="Step back (←)">◀</button>
+        <button id="play" class="primary" title="Play / pause (space)">Play</button>
+        <button id="fwd" title="Step forward (→)">▶</button>
+        <label class="hint">Speed <select id="speed"><option value="1400">slow</option><option value="700" selected>normal</option><option value="250">fast</option></select></label>
+        <label class="hint">Go to hand <input id="goto" type="number" min="1" style="width:80px"></label>
+      </div>
+      <div class="stage" id="stage">
+        <div class="felt"></div>
+        <div class="center">
+          <div class="street" id="street"></div>
+          <div class="cards" id="board"></div>
+          <div class="pot" id="pot"></div>
+        </div>
+      </div>
+      <p class="hint">Spectator view: every bot's hole cards are face up. Deal <span id="dealLabel"></span>. Keys: ← → step, Shift+← → hand, space play.</p>
+    </div>
+  </section>
+  <aside class="side">
+    <div class="panel"><h2>Leaderboard</h2><div id="leaderboard"></div></div>
+    <div class="panel"><h2>Hand log</h2><div class="log" id="log"></div></div>
+  </aside>
+</main>
+<script>
+const DATA = __ARENA_DATA__;
+const SUIT = { c: "♣", d: "♦", h: "♥", s: "♠" };
+const cfg = DATA.run.config || { small_blind: 5, big_blind: 10, starting_stack: 1000 };
+const $ = (id) => document.getElementById(id);
+
+let filtered = DATA.hands, handIdx = 0, step = 0, timer = null;
+
+function cardEl(code, small) {
+  const d = document.createElement("div");
+  if (!code) { d.className = "card back"; return d; }
+  const rank = code[0] === "T" ? "10" : code[0];
+  d.className = "card" + ("hd".includes(code[1]) ? " red" : "");
+  d.innerHTML = `<span>${rank}</span><span class="s">${SUIT[code[1]]}</span>`;
+  return d;
+}
+
+function fmt(n) { return n.toLocaleString("en-GB"); }
+
+function renderLeaderboard() {
+  const rows = DATA.leaderboard;
+  if (!rows.length) { $("leaderboard").innerHTML = '<p class="hint">No leaderboard.csv in this run.</p>'; return; }
+  let html = '<table class="lb"><tr><th>bot</th><th>mbb/hand</th><th>±95%</th><th>avg ms</th><th>err</th></tr>';
+  for (const r of rows) {
+    const v = parseFloat(r.mbb_per_hand);
+    html += `<tr><td>${r.bot}</td><td class="${v >= 0 ? "pos" : "neg"}">${v.toFixed(1)}</td><td>${r.ci95 === "nan" ? "n/a" : parseFloat(r.ci95).toFixed(1)}</td><td>${r.avg_ms ?? ""}</td><td>${r.errors}</td></tr>`;
+  }
+  $("leaderboard").innerHTML = html + "</table>";
+}
+
+function setupMatchups() {
+  const keys = [...new Set(DATA.hands.map((h) => [...h.players].sort().join(" vs ")))];
+  const sel = $("matchup");
+  sel.innerHTML = `<option value="">All line-ups (${DATA.hands.length} hands)</option>` +
+    keys.map((k) => `<option>${k}</option>`).join("");
+  sel.onchange = () => {
+    filtered = sel.value ? DATA.hands.filter((h) => [...h.players].sort().join(" vs ") === sel.value) : DATA.hands;
+    handIdx = 0; step = 0; render();
+  };
+}
+
+// Rebuild the table as it stood after `upto` actions of hand h.
+function replay(h, upto) {
+  const n = h.players.length;
+  const [sb, bb] = n === 2 ? [1, 0] : [0, 1];
+  const stacks = Array(n).fill(cfg.starting_stack), bets = Array(n).fill(0), folded = Array(n).fill(false);
+  let pot = 0, street = "preflop";
+  const post = (s, amt) => { const a = Math.min(amt, stacks[s]); stacks[s] -= a; bets[s] += a; pot += a; };
+  post(sb, cfg.small_blind); post(bb, cfg.big_blind);
+  const lastAct = Array(n).fill(null);
+  for (let i = 0; i < upto && i < h.history.length; i++) {
+    const a = h.history[i];
+    if (a.street !== street) { street = a.street; bets.fill(0); lastAct.fill(null); }
+    if (a.action === "fold") folded[a.seat] = true;
+    else if (a.action === "call") post(a.seat, a.amount);
+    else if (a.action === "raise") post(a.seat, a.amount - bets[a.seat]);
+    lastAct[a.seat] = a;
+  }
+  const done = upto > h.history.length;
+  if (done) { for (let s = 0; s < n; s++) stacks[s] = cfg.starting_stack + h.payoffs[s]; }
+  const next = upto < h.history.length ? h.history[upto] : null;
+  if (next && next.street !== street) { street = next.street; bets.fill(0); lastAct.fill(null); }
+  const shown = { preflop: 0, flop: 3, turn: 4, river: 5 }[street];
+  return { n, sb, bb, stacks, bets, folded, pot, street, lastAct, done, actor: next ? next.seat : null,
+           board: done ? h.board : h.board.slice(0, shown) };
+}
+
+function seatPositions(n) {
+  // Spread seats around an ellipse, seat 0 at the bottom.
+  return Array.from({ length: n }, (_, i) => {
+    const t = Math.PI / 2 + (2 * Math.PI * i) / n;
+    return { left: 50 + 44 * Math.cos(t), top: 50 + 40 * Math.sin(t) };
+  });
+}
+
+function render() {
+  stop();
+  const stage = $("stage");
+  stage.querySelectorAll(".seat").forEach((e) => e.remove());
+  if (!filtered.length) { $("handLabel").textContent = "no hands"; return; }
+  const h = filtered[handIdx];
+  const maxStep = h.history.length + 1;
+  step = Math.max(0, Math.min(step, maxStep));
+  const s = replay(h, step);
+  $("handLabel").textContent = `${handIdx + 1} / ${filtered.length}`;
+  $("dealLabel").textContent = `#${h.deal + 1}, seating ${h.rotation + 1}`;
+  $("street").textContent = s.done ? "result" : s.street;
+  $("pot").textContent = s.done ? "" : `Pot ${fmt(s.pot)}`;
+  const board = $("board"); board.innerHTML = "";
+  s.board.forEach((c) => board.appendChild(cardEl(c)));
+  const pos = seatPositions(s.n);
+  for (let i = 0; i < s.n; i++) {
+    const el = document.createElement("div");
+    el.className = "seat" + (s.folded[i] ? " folded" : "") + (s.actor === i ? " acting" : "") +
+      (s.done && h.payoffs[i] > 0 ? " winner" : "");
+    el.style.left = pos[i].left + "%"; el.style.top = pos[i].top + "%";
+    const tags = [i === s.n - 1 ? "Button" : "", i === s.sb ? "SB" : "", i === s.bb ? "BB" : ""].filter(Boolean).join(" · ");
+    const a = s.lastAct[i];
+    const actText = a ? (a.action === "raise" ? `raise to ${fmt(a.amount)}` : a.action === "call" ? `call ${fmt(a.amount)}` : a.action) : "";
+    const delta = s.done ? h.payoffs[i] : null;
+    el.innerHTML = `<div class="cards"></div><div class="box"><div class="name" title="${h.players[i]}">${h.players[i]}</div>
+      <div class="stack">${fmt(s.stacks[i])} chips</div><div class="tags">${tags}</div></div>
+      <div class="bet">${!s.done && s.bets[i] ? fmt(s.bets[i]) : ""}</div>
+      <div class="act ${a ? a.action : ""}">${actText}</div>
+      <div class="delta ${delta > 0 ? "pos" : delta < 0 ? "neg" : ""}">${delta === null ? "" : (delta > 0 ? "+" : "") + fmt(delta)}</div>`;
+    h.hole_cards[i].forEach((c) => el.querySelector(".cards").appendChild(cardEl(c)));
+    stage.appendChild(el);
+  }
+  renderLog(h);
+}
+
+function renderLog(h) {
+  const log = $("log"); log.innerHTML = "";
+  let street = "";
+  h.history.forEach((a, i) => {
+    if (a.street !== street) { street = a.street; const st = document.createElement("div"); st.className = "st"; st.textContent = street; log.appendChild(st); }
+    const d = document.createElement("div");
+    const what = a.action === "raise" ? `raises to ${fmt(a.amount)}` : a.action === "call" ? `calls ${fmt(a.amount)}` : a.action + "s";
+    d.textContent = `${h.players[a.seat]} ${what}`;
+    if (i === step - 1) d.className = "cur";
+    log.appendChild(d);
+  });
+  const res = document.createElement("div"); res.className = "st"; res.textContent = "result"; log.appendChild(res);
+  h.players.forEach((p, i) => {
+    const d = document.createElement("div");
+    const v = h.payoffs[i];
+    d.innerHTML = `${p}: <span class="${v > 0 ? "pos" : v < 0 ? "neg" : ""}">${v > 0 ? "+" : ""}${fmt(v)}</span>` + (h.errors[i] ? ` (${h.errors[i]} errors)` : "");
+    if (step > h.history.length) d.className = "cur";
+    log.appendChild(d);
+  });
+  const cur = log.querySelector(".cur"); if (cur) cur.scrollIntoView({ block: "nearest" });
+}
+
+function stop() { if (timer) { clearInterval(timer); timer = null; } $("play").textContent = "Play"; }
+function play() {
+  if (timer) { stop(); return; }
+  $("play").textContent = "Pause";
+  timer = setInterval(() => {
+    const h = filtered[handIdx];
+    if (step <= h.history.length) { step++; const t = timer; render(); timer = t; $("play").textContent = "Pause"; }
+    else if (handIdx < filtered.length - 1) { handIdx++; step = 0; const t = timer; render(); timer = t; $("play").textContent = "Pause"; }
+    else stop();
+  }, parseInt($("speed").value, 10));
+}
+
+$("fwd").onclick = () => { step++; render(); };
+$("back").onclick = () => { step--; render(); };
+$("nextHand").onclick = () => { if (handIdx < filtered.length - 1) { handIdx++; step = 0; render(); } };
+$("prevHand").onclick = () => { if (handIdx > 0) { handIdx--; step = 0; render(); } };
+$("play").onclick = play;
+$("speed").onchange = () => { if (timer) { stop(); play(); } };
+$("goto").onchange = (e) => { const v = parseInt(e.target.value, 10) - 1; if (v >= 0 && v < filtered.length) { handIdx = v; step = 0; render(); } };
+document.addEventListener("keydown", (e) => {
+  if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
+  if (e.key === "ArrowRight") (e.shiftKey ? $("nextHand") : $("fwd")).click();
+  else if (e.key === "ArrowLeft") (e.shiftKey ? $("prevHand") : $("back")).click();
+  else if (e.key === " ") { e.preventDefault(); play(); }
+});
+
+const r = DATA.run;
+$("meta").textContent = [r.command, r.bots && r.bots.join(", "), r.config && `blinds ${cfg.small_blind}/${cfg.big_blind}, stack ${fmt(cfg.starting_stack)}`,
+  DATA.truncated ? `showing first ${DATA.hands.length} of ${DATA.total_hands} hands` : `${DATA.hands.length} hands`].filter(Boolean).join(" · ");
+renderLeaderboard(); setupMatchups(); render();
+</script>
+</body>
+</html>

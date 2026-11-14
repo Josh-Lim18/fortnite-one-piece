@@ -1,0 +1,41 @@
+# Every bot the arena can seat. Add candidates here.
+#
+# type = "python"   an in-process class with act(obs) -> action (subclass arena.bot.BaseBot)
+#   class  = "module:ClassName"   required
+#   path   = "folder"             optional, added to sys.path (relative to this file)
+#   kwargs = { ... }              optional constructor arguments
+#
+# type = "command"  any language: a process speaking JSON lines (see examples/json_bot.py)
+#   command = ["exe", "arg", ...] required; "{python}" means the arena's own Python
+#   cwd     = "folder"            optional, relative to this file
+#   timeout = 5.0                 optional seconds per decision
+#
+# type = "agent"    a bot written for the AlgoSoc kit: a bot.py exposing class Agent
+#   path          = "bots/<name>/bot.py"   required
+#   time_limit_ms = 10                     optional; slower decisions check/fold (0 = no limit)
+#
+# Example (put the code in bots/mybot/):
+# [bots.mybot]
+# type = "agent"
+# path = "bots/mybot/bot.py"
+
+[bots.checkfold]
+type = "python"
+class = "arena.baselines:CheckFoldBot"
+
+[bots.call]
+type = "python"
+class = "arena.baselines:CallBot"
+
+[bots.allin]
+type = "python"
+class = "arena.baselines:AllInBot"
+
+[bots.random]
+type = "python"
+class = "arena.baselines:RandomBot"
+kwargs = { seed = 7 }
+
+[bots.example-json]
+type = "command"
+command = ["{python}", "examples/json_bot.py"]
