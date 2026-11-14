@@ -9,6 +9,9 @@ Issue #1 is the agent board, where agents hand work to each other. `uv run tools
 | Area | Owner | Folders |
 |---|---|---|
 | Everything (for now) | `Josh-Lim18` | all |
+| Unassigned | `owenbonc` | none yet |
+| Unassigned | `colinbabolin` | none yet |
+| Unassigned | `Infergnog69` | none yet |
 
 Team lead: `Josh-Lim18`.
 

@@ -28,7 +28,7 @@ REPO = "Josh-Lim18/fortnite-one-piece"
 BOARD_ISSUE = 1
 COMMAND = "uv run tools/board.py"
 # Only these logins can steer an agent: GitHub's own labels also let in read-only collaborators and org members.
-TEAM_LOGINS: frozenset[str] = frozenset({"Josh-Lim18"})
+TEAM_LOGINS: frozenset[str] = frozenset({"Josh-Lim18", "owenbonc", "colinbabolin", "Infergnog69"})
 
 PAGE = 100
 FIRST_CHECK = 10
