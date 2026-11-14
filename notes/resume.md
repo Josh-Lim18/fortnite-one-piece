@@ -2,6 +2,8 @@
 
 ## RESUMED Sat 15:20
 
+- 17:45: equity network merged on main (tag `equity-net-1`, `equity_net/`, switched on in picker-1's bot.py; MAE 0.026 vs the Monte Carlo's 0.080 with bias +0.052 from keeping one in four out-of-range deals; 0.57x time; +18 KB). The bias is a real base bug in v1-fast (`_equity`, `if t & 3: continue`), posted to Anh on the board. Owen: wait for Anh's v1-fast fixes, THEN port the equity network into `poker/live` (not before).
+
 - 17:30: real-data analysis merged (main 2a1751a): `notes/field-report.md` (names other teams: keep it out of the public repo), `opponents/real/` (38 clones, weaker than the real teams: v1-fast +123 against them), layer 2 refit (k=5; real held-out log-loss prior 0.841, counts 0.671, full 0.667; calibration poor at the top). Against v1-fast on real clones: demo-2 −4.0 ± 2.8 (1.17x time), picker-1 −49.9 ± 6.0 (1.9x). Decision: keep v1-fast. Field: tight-aggressive; bets of a pot or more fold 63–78%, bets under 0.4 pot called 73%; winners don't limp. Posted on the board; layer 2 agent told.
 
 - 17:25: Owen: given the time, build a fuller layer 2 inside v1-fast first (`notes/slice-layer2-live.md`, branch `layer2/live` off `poker-live`, Opus agent, report about 18:50). It keeps the base's read calls (`_seat`, `_rate`, `Seat`, `on_hand_end`) and stays within 1.5x v1-fast's thinking. Colin's v1 auto-picker patch is deferred: the file wasn't provided, so I asked on the board. Its laptop budget (2 ms equity, 5 ms guard) is too loose for the platform. Explainer page agent running (`notes/slice-diagram.md`). Board post 17:23 (plan and time budget).
