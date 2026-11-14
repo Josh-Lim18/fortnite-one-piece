@@ -47,6 +47,11 @@ Merge rule: in the agent's worktree `git merge main`, run `scripts/verify.sh`, t
 4. When the token arrives: `python3 kit/fetch_hands.py --token ...`, run `tools/analyze.py hands/ --emit opponents/`, tune with `tools/tune.py`.
 5. Adaption: when the research and dataset agents report, convert the dataset to the platform's format and walk Owen through starting the fine-tune (he signs in and claims credits under My Pass on the event site).
 
+## Adaption run
+
+- Sat 14:28: data adaption launched on Owen's account (dataset id a8c739b1-2834-463e-afec-b1de538b8168): 10,821 rows, instruction dataset, no expansion, recipes deduplication and reasoning traces only, length Concise, blueprint rule that every completion ends with the original action unchanged. Cost 109 of 1,250 credits. Estimated 146 min; Adaption emails Owen when ready.
+- Next: when it finishes, open sample rows and check each completion still ends with our bot's action; then start Train with AutoScientist (under-10B model), showing Owen its credit cost before launch.
+
 ## Adaption facts (docs.adaptionlabs.ai, read Sat 13:10)
 
 - Our `prompt`/`completion` JSONL uploads as-is: web app, API or Python SDK (`pip install adaption`), `processing_mode="raw"` with a `column_mapping` for the two columns. The `create` call's `data_format` defaults to `chat` for raw data: check it.
