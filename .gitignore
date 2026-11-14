@@ -1,0 +1,4 @@
+.env
+hands/
+__pycache__/
+.claude/worktrees/
