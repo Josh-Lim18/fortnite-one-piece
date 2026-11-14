@@ -6,6 +6,7 @@ import base64
 import gc
 import random
 import time
+from bisect import bisect_right
 
 # Every tunable number lives here so tools/tune.py can search them.
 PARAMS = {
@@ -42,7 +43,13 @@ PARAMS = {
     "sticky_fold": 0.35,       # postflop fold-to-bet rate at and above which a seat gets no special treatment
     "sticky_value": 0.52,      # value-bet threshold against a seat that never folds
     "sticky_allin": 0.70,      # get it all in postflop with this equity against a seat that never folds
+    # Layer 2: every count above is read with old hands faded, and raise ranges widened for seats that raise at random.
+    "half_life": 150.0,        # hands for an observation's weight to halve, so a change of style is re-read
+    "shown_prior": 3.0,        # showdowns of a seat whose raises mean strength, behind the random-or-strategic read
+    "random_gap": 0.5,         # raises read as fully random once the shown raise-call strength gap falls to this share of a strategic seat's
     "trials": 40,              # Monte Carlo rollouts per postflop decision
+    "redraws": 30,             # tries to deal every opponent a hand from its range with no card clash
+    "min_trials": 6,           # rollouts run before the deadline may stop them, so a late start never returns a blind 0.5
     "decision_ms": 0.6,        # stop rolling out after this long
     "round_budget_s": 1.2,     # own thinking time after which rollouts are cut to a quarter
     "round_stop_s": 2.5,       # own thinking time after which only a handful of rollouts run: the tournament also counts transport
@@ -324,6 +331,11 @@ def hand_cls(c1, c2):
     return CLS[(c1 >> 2) * 26 + (c2 >> 2) * 2 + (1 if (c1 & 3) == (c2 & 3) else 0)]
 
 
+# Every two-card hand, strongest first, so the hands inside a range's top share are a prefix.
+COMBOS = sorted(((a, b) for a in range(52) for b in range(a + 1, 52)), key=lambda c: hand_pct(*c))
+COMBO_PCT = [hand_pct(a, b) for a, b in COMBOS]
+
+
 
 def score(cards):
     """Strength of the best five of 5-7 cards as one int; higher wins."""
@@ -391,24 +403,40 @@ class Seat:
         self.pf_faced = self.pf_called = self.shove_faced = self.shove_called = 0
 
 
+class Track(Seat):
+    """Seat's counts, each hand weighted 2 ** (hand / half_life) so old hands fade without rescaling any count, plus
+    what the random-or-strategic read needs: pfr and shove before widening, the preflop hand_pct shown at showdown
+    after raising and after only calling ([raises, their pct sum, calls, their pct sum]), and how random raises look."""
+
+    __slots__ = ("pfr_own", "shove_own", "shown", "rnd")
+
+    def __init__(self):
+        Seat.__init__(self)
+        self.pfr_own = self.shove_own = self.rnd = 0.0
+        self.shown = [0.0, 0.0, 0.0, 0.0]
+
+
 class Agent:
     def __init__(self, params=None):
         self.p = dict(PARAMS, **(params or {}))
         self.rng = random.Random()
         self.seats = []
+        self.hand = 0
+        self.w = 1.0  # weight of the latest hand's counts
         self.stack = 2000
         self.bb = 20
         self.spent = 0.0
         gc.disable()  # a collection pause can blow the 10 ms limit
 
     def on_table_start(self, info):
-        self.seats = [Seat() for _ in range(info["num_players"])]
+        self.seats = [Track() for _ in range(info["num_players"])]
         self.stack = info["starting_stack"]
         self.bb = info.get("big_blind", 20)
 
     # ------------------------------------------------------------ profiling
     def _rate(self, count, total, prior, k=None):
-        k = self.p["prior_hands"] if k is None else k
+        """A seat's count / total shrunk toward prior by k hands; k is scaled to the counts' current hand weight."""
+        k = (self.p["prior_hands"] if k is None else k) * self.w
         return (count + prior * k) / (total + k)
 
     def _pf_call(self, s):
@@ -426,58 +454,91 @@ class Agent:
 
     def _seat(self, i):
         while len(self.seats) <= i:
-            self.seats.append(Seat())
+            self.seats.append(Track())
         return self.seats[i]
 
     def on_hand_end(self, summary):
-        big = self.p["big_bet"] * self.stack
+        t0 = time.perf_counter()
+        p = self.p
+        n = len(summary["stacks"])
+        self._seat(n - 1)
+        self.hand += 1
+        self.w = w = 2.0 ** (self.hand / p["half_life"])
+        big = p["big_bet"] * self.stack
+        pf_big = p["pf_big_bb"] * self.bb
         entered, raised, shoved = set(), set(), set()
-        street, bet_open = "preflop", False
-        pf_big = self.p["pf_big_bb"] * self.bb
-        put, top = {}, 0
+        street, bet_open, put, top = "preflop", False, [0] * n, 0
         for h in summary["history"]:
-            a, i = h["action"], h["seat"]
+            a, i, amount = h["action"], h["seat"], h["amount"]
             if h["street"] != street:
                 street, bet_open = h["street"], False
             if a in ("small_blind", "big_blind"):
-                put[i] = h["amount"]
-                top = max(top, h["amount"])
+                put[i] = amount
+                top = max(top, amount)
                 continue
-            s = self._seat(i)
+            s = self.seats[i]
             if street == "preflop":
-                if top >= pf_big and put.get(i, 0) < top:
-                    s.pf_faced += 1
-                    s.pf_called += a != "fold"
+                if top >= pf_big and put[i] < top:
+                    s.pf_faced += w
+                    s.pf_called += w * (a != "fold")
                     if top >= big:
-                        s.shove_faced += 1
-                        s.shove_called += a != "fold"
+                        s.shove_faced += w
+                        s.shove_called += w * (a != "fold")
                 if a == "raise":
-                    put[i] = top = max(top, h["amount"])
+                    put[i] = top = max(top, amount)
                 elif a == "call":
-                    put[i] = put.get(i, 0) + h["amount"]
+                    put[i] += amount
                 if a in ("call", "raise"):
                     entered.add(i)
                 if a == "raise":
                     raised.add(i)
-                    if h["amount"] >= big:
+                    if amount >= big:
                         shoved.add(i)
                 continue
             if bet_open:
                 if a == "fold":
-                    s.folds += 1
+                    s.folds += w
                 else:
-                    s.continues += 1
+                    s.continues += w
             if a == "raise":
-                s.bets += 1
+                s.bets += w
                 bet_open = True
             elif a in ("check", "call"):
-                s.passive += 1
-        for i in range(len(summary["stacks"])):
-            s = self._seat(i)
-            s.hands += 1
-            s.vpip += i in entered
-            s.pfr += i in raised
-            s.shove += i in shoved
+                s.passive += w
+        for k, cards in summary.get("shown", {}).items():
+            i = int(k)
+            if i < n and (i in raised or i in entered):
+                s = self.seats[i]
+                j = 0 if i in raised else 2
+                s.shown[j] += w
+                s.shown[j + 1] += w * hand_pct(card(cards[0]), card(cards[1]))
+                s.rnd = self._random(s)
+        for i in range(n):
+            s = self.seats[i]
+            s.hands += w
+            if i in entered:
+                s.vpip += w
+                if i in raised:
+                    s.pfr_own += w
+                    if i in shoved:
+                        s.shove_own += w
+            r = s.rnd
+            s.pfr = s.pfr_own + r * max(0.0, s.vpip - s.pfr_own) if r else s.pfr_own
+            s.shove = s.shove_own + r * max(0.0, s.vpip - s.shove_own) if r else s.shove_own
+        self.spent += time.perf_counter() - t0
+
+    def _random(self, s):
+        """0 for a seat whose shown raises are stronger than its shown calls as a strategic seat's are, 1 for one
+        whose raises show no stronger hands; its raise and shove ranges are widened toward its entering one by this."""
+        p = self.p
+        sh, k = s.shown, p["shown_prior"] * self.w
+        if sh[0] < 0.5 * self.w:
+            return 0.0
+        pr = self._rate(s.pfr_own, s.hands, p["prior_pfr"])
+        vp = self._rate(s.vpip, s.hands, p["prior_vpip"])
+        # A strategic seat shows raises from its top pfr share and calls from the band below, vpip / 2 apart.
+        gap = (sh[3] + k * (pr + vp) / 2) / (sh[2] + k) - (sh[1] + k * pr / 2) / (sh[0] + k)
+        return min(1.0, max(0.0, 1.0 - gap / (p["random_gap"] * vp / 2)))
 
     # --------------------------------------------------------------- acting
     def act(self, state):
@@ -671,35 +732,35 @@ class Agent:
         used.update(board)
         deck = [c for c in DECK if c not in used]
         missing = 5 - len(board)
-        need = missing + 2 * len(widths)
-        sample, clock = self.rng.sample, time.perf_counter
+        tops = [len(COMBOS) if w >= 0.95 else bisect_right(COMBO_PCT, w) for w in widths]
+        sample, rand, clock = self.rng.sample, self.rng.random, time.perf_counter
         fixed = score(hero + board) if not missing else 0
         won = 0.0
         done = 0
-        for t in range(trials):
-            if not t & 7 and clock() > deadline:
+        for _ in range(trials):
+            if done >= p["min_trials"] and clock() > deadline:
                 break
-            draw = sample(deck, need)
-            ok = True
-            k = missing
-            for w in widths:
-                if w < 0.95 and hand_pct(draw[k], draw[k + 1]) > w:
-                    ok = False
+            # Opponents' hands first and together, then the runout from what is left: dealing the
+            # runout first would skew the deal toward runouts that block few in-range hands.
+            for _ in range(p["redraws"]):
+                taken = set(used)
+                hands = []
+                for top in tops:
+                    if not top:
+                        break
+                    a, b = COMBOS[int(rand() * top)]
+                    if a in taken or b in taken:
+                        break
+                    taken.add(a)
+                    taken.add(b)
+                    hands.append([a, b])
+                else:
                     break
-                k += 2
-            if not ok:
-                # Outside a seat's range: keep one deal in four so the estimate never starves.
-                if t & 3:
-                    continue
-            full = board + draw[:missing] if missing else board
+            else:
+                continue
+            full = board + sample([c for c in deck if c not in taken], missing) if missing else board
             mine = score(hero + full) if missing else fixed
-            best = 0
-            k = missing
-            for _ in widths:
-                v = score(draw[k:k + 2] + full)
-                if v > best:
-                    best = v
-                k += 2
+            best = max((score(h + full) for h in hands), default=0)
             won += 1.0 if mine > best else 0.5 if mine == best else 0.0
             done += 1
         return won / done if done else 0.5
