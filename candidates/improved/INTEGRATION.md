@@ -1,17 +1,62 @@
-# Lane C: hand and draw analysis (integration note)
+# Lane C: hand, draw and preflop analysis (integration note)
 
-**Status.** Analysis is complete and tested. The replacement betting strategy
-and preflop tables are **pending**; `select_action` still runs the starter
+**Status.** Hand/draw analysis and preflop analysis are complete and tested.
+This does **not** replace the starter strategy: the betting strategy and
+preflop tables are **pending**, and `select_action` still runs the starter
 kit's rules as a labelled **temporary fallback**. Not merged, not submitted.
 
 ## Files
-- `bot.py`: self-contained submission file (13.8 KB, stdlib only).
-- `tests/test_analysis.py`: 20 tests. Run with `KIT=<starter kit> python tests/test_analysis.py`.
+- `bot.py`: self-contained submission file (24.9 KB, stdlib only).
+- `tests/test_analysis.py`: 20 tests (hands and draws).
+- `tests/test_preflop.py`: 15 tests (preflop), using real engine states.
+- Run either with `KIT=<starter kit> python tests/<file>.py`.
 
 ## Pipeline
-`Agent.act(state)` → `analyze(hole_cards, board)` → `select_action(state, analysis)`.
-The replacement policy only changes `select_action`. If `analyze` ever raises,
-`act` passes `None` and still returns a decision.
+`Agent.act(state)` → `analyze(hole_cards, board)` plus
+`analysis["preflop"] = analyze_preflop(state, starting_stack)` →
+`select_action(state, analysis)`. The replacement policy only changes
+`select_action`. If `analyze` raises, `act` passes `None`; if only
+`analyze_preflop` raises, `analysis["preflop"]` is `None`. A decision is
+always returned.
+
+## `analyze_preflop(state, starting_stack=None)` returns
+Everything is derived from `state["history"]` on each call, so a second
+decision in the same hand never double-counts, and nothing carries over
+between hands.
+- `hand_category`: one of 169 classes, higher rank first (`AA`, `AKs`, `AKo`, `76s`).
+- `position`: `label`, `action_order_index` (0 = first to act preflop),
+  `seats_in_action_order`, `labels_by_seat`, `players_dealt`,
+  `original_players_behind`, `dealt_seats_source`.
+  Labels in preflop action order: 8-handed `UTG, UTG+1, LJ, HJ, CO, BTN, SB, BB`;
+  7-handed `UTG, LJ, HJ, CO, BTN, SB, BB`. SB is the first dealt seat after
+  the button, as in the engine. Labels are fixed at the deal: folds never
+  relabel anyone. Seats that weren't dealt in (busted seats that are folded
+  with no history) are skipped.
+- `action` (`available: false` with a `reason` when history is missing,
+  doesn't start with both blinds, or has a malformed entry):
+  - `events`: every preflop entry in order, with `seat`, `position`,
+    `action`, `amount`, `voluntary` (blinds are not), `bet_level_before`,
+    `all_in`. Raises add `raise_to`, `raise_increment`, `full_raise`,
+    `raise_number`, `raise_name` (`open_raise`, `3bet`, `4bet`, ...).
+  - `posted_blinds`, `limpers` (calls before any raise, including the SB
+    completing), `open_raiser`, `re_raisers`, `callers` (with
+    `called_raise_number`, `short_call` for all-in calls for less),
+    `folded_seats`.
+  - `pot_type`: `unopened`, `limped`, `single_raised` or `re_raised`;
+    `raise_count`; `bet_level`.
+  - Only while it's still preflop: `to_call`, `current_bet`, `our_bet`, `pot`,
+    `min_raise_to`/`max_raise_to`, `raises_this_street`, `decision_number`,
+    `our_previous_actions`, `raising_reopened_for_us` (false after an
+    incomplete all-in raise if we've already acted, as the engine rules),
+    `can_raise_now`, `opponents_in_hand`, `opponents_all_in`,
+    `still_to_act_after_us` (seats the engine will still ask to act after
+    us), and `consistent_with_state` (the replay reproduces the state's bets,
+    folds and raise count; otherwise a `warning` is added).
+
+Unavailable information: no hidden cards or opponents' stacks beyond the
+state. All-in flags after preflop need `starting_stack` from
+`on_table_start`; without it they are `None`. If history is missing,
+positions use unfolded seats only (`dealt_seats_source` says so).
 
 ## `analyze(hole_cards, board)` returns
 - `street`, `hole` (high, low, pocket_pair, suited).
@@ -57,3 +102,18 @@ completion outs, **not** the chance of winning.
 - `kicker_only` means our category equals the board's; it doesn't say whether
   the kicker is relevant.
 - Not yet run through lane D's `tests/check_submission.py` (PR #4 is unmerged).
+
+## Preflop validation (Python 3.12.10, official kit engine)
+- Hand categories: all 1,326 two-card combos map to exactly 169 classes
+  (6 per pair, 4 per suited, 12 per offsuit hand).
+- Positions: every seat, at every button position, at 7 and 8 seats.
+- Scripted engine hands: unopened, limpers, raise + call + 3-bet, a repeat
+  decision with no duplicated events, a short all-in raise that doesn't
+  reopen raising (plus a short all-in call), and a busted seat at an
+  8-seat table.
+- Missing history, missing blinds, malformed entries and a dropped event
+  are all reported as unavailable or inconsistent, never guessed.
+- Random engine play, 7/8 seats, no-limit/pot-limit/fixed-limit: 5,486
+  decisions, all consistent with state. `analyze_preflop` mean 0.022 ms,
+  max 0.41 ms. Kit `local_sim.py`, 3 × 1,000 hands: 0 timeouts, 0 errors,
+  worst round 0.8 s of the 10 s bank.

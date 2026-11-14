@@ -2,7 +2,8 @@
 TEMPORARY FALLBACK policy.
 
 Status
-- Done: `analyze(hole_cards, board)` (made-hand and draw assessment).
+- Done: `analyze(hole_cards, board)` (made-hand and draw assessment) and
+  `analyze_preflop(state)` (hand category, position, preflop action).
 - Pending: the replacement betting strategy and preflop tables. Until those
   are agreed, `select_action` runs the starter kit's rules unchanged.
 
@@ -334,6 +335,241 @@ def analyze(hole_cards, board_cards):
     return result
 
 
+# --- Preflop analysis --------------------------------------------------------
+# Facts only: starting-hand category, position, and the preflop action so far.
+# No ranges, tables or strategy here.
+
+def hand_category(hole_cards):
+    """One of the 169 starting-hand classes: 'AA', 'AKs', 'AKo', '76s'."""
+    a, b = (card_int(c) for c in hole_cards)
+    hi, lo = max(a >> 2, b >> 2), min(a >> 2, b >> 2)
+    if hi == lo:
+        return RANKS[hi] * 2
+    return RANKS[hi] + RANKS[lo] + ("s" if a & 3 == b & 3 else "o")
+
+
+# Position labels in preflop action order (first to act ... big blind).
+POSITION_LABELS = {
+    8: ("UTG", "UTG+1", "LJ", "HJ", "CO", "BTN", "SB", "BB"),
+    7: ("UTG", "LJ", "HJ", "CO", "BTN", "SB", "BB"),
+}
+
+
+def _labels(n):
+    if n in POSITION_LABELS:
+        return POSITION_LABELS[n]
+    if n == 2:
+        return ("BTN/SB", "BB")  # heads-up: the button posts the small blind
+    tail = ("CO", "BTN", "SB", "BB")[-min(n, 4):]
+    return tuple("EP%d" % (k + 1) for k in range(n - len(tail))) + tail
+
+
+def _dealt_seats(state, history):
+    """Seats dealt into this hand. A seat that is folded with no action in the
+    history was not dealt in (the engine shows busted seats as folded)."""
+    if history is None:
+        return None
+    acted = {e.get("seat") for e in history}
+    return [s for s in range(len(state["stacks"])) if not state["folded"][s] or s in acted]
+
+
+def position_info(state):
+    history = state.get("history")
+    dealt = _dealt_seats(state, history if isinstance(history, list) else None)
+    source = "history"
+    if dealt is None:
+        dealt = [s for s in range(len(state["stacks"])) if not state["folded"][s]]
+        source = "unfolded_seats_only (history unavailable; folded seats unknown)"
+    me, button = state["seat"], state["button"]
+    n_seats = len(state["stacks"])
+    clockwise = sorted(dealt, key=lambda s: (s - button - 1) % n_seats)
+    if len(dealt) == 2:
+        order = sorted(dealt, key=lambda s: s != button)
+    else:
+        order = clockwise[2:] + clockwise[:2]
+    labels = _labels(len(order))
+    idx = order.index(me)
+    return {
+        "seat": me,
+        "button": button,
+        "players_dealt": len(order),
+        "dealt_seats_source": source,
+        "label": labels[idx],
+        "action_order_index": idx,          # 0 = first to act preflop
+        "seats_in_action_order": order,
+        "labels_by_seat": {s: labels[i] for i, s in enumerate(order)},
+        "original_players_behind": len(order) - 1 - idx,
+    }
+
+
+_PREFLOP_RAISE_NAMES = ("open_raise", "3bet", "4bet", "5bet")
+
+
+def analyze_preflop(state, starting_stack=None):
+    """Structured, public-information view of the preflop action.
+
+    Derived from state["history"] on every call, so repeated decisions in a
+    hand never double-count and nothing needs resetting between hands.
+    Fields that the state cannot establish are reported as unavailable.
+    """
+    out = {"hand_category": hand_category(state["hole_cards"]),
+           "street": state.get("street")}
+    history = state.get("history")
+    out["position"] = position_info(state)
+    if not isinstance(history, list):
+        out["action"] = {"available": False, "reason": "state has no history list"}
+        return out
+
+    pos = out["position"]
+    order = pos["seats_in_action_order"]
+    labels = pos["labels_by_seat"]
+    n = len(state["stacks"])
+    on_preflop = state.get("street") == "preflop"
+    bb = state.get("big_blind")
+    events_in = [e for e in history if e.get("street") == "preflop"]
+    known = {"small_blind", "big_blind", "fold", "check", "call", "raise"}
+    for e in events_in:
+        if (not isinstance(e.get("seat"), int) or not 0 <= e["seat"] < n
+                or e.get("action") not in known or not isinstance(e.get("amount"), int)):
+            out["action"] = {"available": False, "reason": "malformed preflop history entry",
+                             "entry": e}
+            return out
+    if not events_in or [e["action"] for e in events_in[:2]] != ["small_blind", "big_blind"]:
+        out["action"] = {"available": False,
+                         "reason": "history does not start with both posted blinds"}
+        return out
+
+    # Per-seat chips put in preflop, to tell when a seat is all-in.
+    contrib = [0] * n
+    for e in events_in:
+        if e["action"] == "call":
+            contrib[e["seat"]] += e["amount"]
+        elif e["action"] in ("raise", "small_blind", "big_blind"):
+            contrib[e["seat"]] = e["amount"]  # raise amounts are "raise to"
+    if on_preflop:
+        start = [state["stacks"][s] + contrib[s] for s in range(n)]
+        stack_source = "state stacks + preflop contributions"
+    elif starting_stack is not None:
+        start = [starting_stack] * n
+        stack_source = "on_table_start starting_stack"
+    else:
+        start = None
+        stack_source = "unavailable (all-in flags unknown after preflop)"
+
+    # Replay the engine's preflop betting round.
+    structure = state.get("betting", "no_limit")
+    bets = [0] * n
+    folded = set()
+    level = 0
+    min_inc = bb
+    raises = 0
+    pending, may_raise = set(), {}
+    events, blinds, limpers, callers, raisers, folds = [], [], [], [], [], []
+    for k, e in enumerate(events_in):
+        s, act, amt = e["seat"], e["action"], e["amount"]
+        rec = {"order": k, "seat": s, "position": labels.get(s), "action": act,
+               "amount": amt, "bet_level_before": level}
+        if act in ("small_blind", "big_blind"):
+            bets[s] = amt
+            level = max(level, amt)
+            rec["voluntary"] = False
+            blinds.append({"seat": s, "position": labels.get(s), "blind": act, "amount": amt})
+            if act == "big_blind":
+                pending = {j for j in order if start is None or start[j] - bets[j] > 0}
+                may_raise = {j: True for j in pending}
+        else:
+            rec["voluntary"] = act in ("call", "raise")
+            if act == "raise":
+                increment = amt - level
+                full = bb is not None and increment >= min_inc
+                bets[s] = amt
+                if full and structure != "fixed_limit":
+                    min_inc = increment
+                level = amt
+                raises += 1
+                pending = {j for j in order if j != s and j not in folded
+                           and (start is None or start[j] - bets[j] > 0)}
+                for j in pending:
+                    if full:
+                        may_raise[j] = True
+                    else:
+                        may_raise.setdefault(j, True)
+                rec.update(raise_to=amt, raise_increment=increment, full_raise=full,
+                           raise_number=raises,
+                           raise_name=_PREFLOP_RAISE_NAMES[raises - 1]
+                           if raises <= 4 else "%dbet" % (raises + 1))
+                raisers.append(rec)
+            elif act == "call":
+                bets[s] += amt
+                rec["called_to"] = bets[s]
+                rec["short_call"] = bets[s] < level  # all-in for less
+                (limpers if raises == 0 else callers).append(rec)
+                if raises:
+                    rec["called_raise_number"] = raises
+            elif act == "fold":
+                folded.add(s)
+                folds.append(s)
+            pending.discard(s)
+            may_raise[s] = False
+        rec["all_in"] = None if start is None else start[s] - bets[s] == 0 and act != "fold"
+        events.append(rec)
+
+    if raises == 0:
+        pot_type = "limped" if limpers else "unopened"
+    else:
+        pot_type = "single_raised" if raises == 1 else "re_raised"
+    action = {
+        "available": True,
+        "stack_source": stack_source,
+        "events": events,
+        "posted_blinds": blinds,
+        "limpers": [{"seat": r["seat"], "position": r["position"], "order": r["order"],
+                     "amount": r["amount"], "all_in": r["all_in"]} for r in limpers],
+        "open_raiser": raisers[0] if raisers else None,
+        "re_raisers": raisers[1:],
+        "callers": [{"seat": r["seat"], "position": r["position"], "order": r["order"],
+                     "called_raise_number": r["called_raise_number"], "amount": r["amount"],
+                     "called_to": r["called_to"], "short_call": r["short_call"],
+                     "all_in": r["all_in"]} for r in callers],
+        "folded_seats": folds,
+        "raise_count": raises,
+        "pot_type": pot_type,
+        "bet_level": level,
+    }
+
+    if on_preflop:
+        me = state["seat"]
+        consistent = (bets == list(state["bets"])
+                      and all(state["folded"][j] == (j in folded) for j in order)
+                      and raises == state.get("raises_this_street", raises))
+        idx = order.index(me)
+        after_me = order[idx + 1:] + order[:idx]
+        mine = [r for r in events if r["seat"] == me
+                and r["action"] not in ("small_blind", "big_blind")]
+        action.update({
+            "consistent_with_state": consistent,
+            "to_call": state["to_call"],
+            "current_bet": max(state["bets"]),
+            "our_bet": state["bets"][me],
+            "pot": state["pot"],
+            "min_raise_to": state.get("min_raise_to"),
+            "max_raise_to": state.get("max_raise_to"),
+            "raises_this_street": state.get("raises_this_street"),
+            "decision_number": len(mine) + 1,
+            "our_previous_actions": mine,
+            "raising_reopened_for_us": may_raise.get(me, True),
+            "can_raise_now": "raise" in state["legal_actions"],
+            "opponents_in_hand": [j for j in order if j != me and not state["folded"][j]],
+            "opponents_all_in": [j for j in order if j != me and not state["folded"][j]
+                                 and state["stacks"][j] == 0],
+            "still_to_act_after_us": [j for j in after_me if j in pending],
+        })
+        if not consistent:
+            action["warning"] = "history replay does not match state bets/folds"
+    out["action"] = action
+    return out
+
+
 # --- Action selection --------------------------------------------------------
 
 def select_action(state, analysis):
@@ -364,12 +600,20 @@ class Agent:
 
     def on_table_start(self, info):
         self.seat = info["seat"]
+        self.starting_stack = info.get("starting_stack")
 
     def act(self, state):
+        # Analysis must never break a decision: failures become None.
         try:
             analysis = analyze(state["hole_cards"], state["board"])
         except Exception:
-            analysis = None  # never let analysis break a decision
+            analysis = None
+        if analysis is not None:
+            try:
+                analysis["preflop"] = analyze_preflop(
+                    state, getattr(self, "starting_stack", None))
+            except Exception:
+                analysis["preflop"] = None
         return select_action(state, analysis)
 
     def on_hand_end(self, summary):
