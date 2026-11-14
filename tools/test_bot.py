@@ -9,6 +9,7 @@ from engine import FixedHandsTable  # noqa: E402
 from engine.players import LocalPlayer  # noqa: E402
 
 Bot = sim.load(os.path.join(sim.ROOT, "bot.py"))
+BOT = sys.modules[Bot.__module__]
 EX = os.path.join(sim.ROOT, "kit", "examples")
 POOL = [sim.load(os.path.join(EX, f)) for f in sorted(os.listdir(EX)) if f.endswith(".py")]
 
@@ -45,8 +46,21 @@ def _preflop_state(hole):
                         {"seat": 1, "street": "preflop", "action": "big_blind", "amount": 20}]}
 
 
-def _agent():
-    a = Bot()
+def _flop_state(hole, board):
+    """Heads-up flop checked to us; we raised preflop and seat 1 called."""
+    return {"hole_cards": hole, "board": board, "street": "flop", "seat": 0, "button": 0,
+            "stacks": [1930, 1930], "bets": [0, 0], "folded": [False, False], "pot": 140, "to_call": 0,
+            "min_raise_to": 20, "max_raise_to": 1930, "legal_actions": ["check", "raise"],
+            "small_blind": 10, "big_blind": 20, "blind_level": 0, "hand_number": 16, "betting": "no_limit",
+            "raise_cap": None, "raises_this_street": 0,
+            "history": [{"seat": 0, "street": "preflop", "action": "small_blind", "amount": 10},
+                        {"seat": 1, "street": "preflop", "action": "big_blind", "amount": 20},
+                        {"seat": 0, "street": "preflop", "action": "raise", "amount": 70},
+                        {"seat": 1, "street": "preflop", "action": "call", "amount": 50}]}
+
+
+def _agent(params=None):
+    a = Bot(params)
     a.on_table_start({"seat": 0, "num_players": 2, "hands": 1000, "starting_stack": 2000,
                       "stacks_reset_each_hand": True, "small_blind": 10, "big_blind": 20,
                       "betting": "no_limit", "raise_cap": None})
@@ -66,6 +80,37 @@ def test_presses_a_seat_that_calls_everything():
         trained.on_hand_end(_hand(n + 1, big=n % 3 == 0))
     move = trained.act(_preflop_state(hole))
     assert _is_big(move), move
+
+
+def test_bet_sizes_jitter_within_ten_percent_and_stay_legal():
+    a = _agent()
+    state = _flop_state(["As", "Ah"], ["Ad", "7c", "2h"])
+    sizes = [a._raise(state, 300)["amount"] for _ in range(500)]
+    assert all(270 <= s <= 330 for s in sizes) and len(set(sizes)) > 30, (min(sizes), max(sizes))
+    assert a._raise(state, 5)["amount"] == 20, "min raise jittered"
+    assert a._raise(state, 1500)["amount"] == 1930, "all-in jittered"
+
+
+def test_bluffs_and_value_bets_share_a_size():
+    a = _agent({"size_jitter": 0.0, "mix_band": 0.0, "bluff_freq": 1.0})
+    a.seats[1].folds = 40  # a seat that folds to most bets gets bluffed
+    value = Strict.act(a, _flop_state(["As", "Ah"], ["Ad", "7c", "2h"]))
+    bluff = Strict.act(a, _flop_state(["6s", "3d"], ["Ad", "Kc", "Th"]))
+    assert value["action"] == bluff["action"] == "raise", (value, bluff)
+    assert value["amount"] == bluff["amount"], (value, bluff)
+
+
+def test_mixes_only_near_a_threshold():
+    hole = ["Qs", "Jd"]
+    pct = BOT.hand_pct(*(BOT.card(c) for c in hole))
+
+    def raises(limit):
+        a = _agent({"iso_raise": limit})
+        return {a.act(_preflop_state(hole))["action"] == "raise" for _ in range(200)}
+
+    assert raises(pct) == {True, False}, "no mixing exactly at the threshold"
+    assert raises(pct + 0.1) == {True}
+    assert raises(0.0) == {False}
 
 
 def test_other_structures_play_clean():
