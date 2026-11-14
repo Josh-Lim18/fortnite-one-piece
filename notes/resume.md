@@ -4,6 +4,8 @@ Updated Sat 14 Nov 2026, 13:25 GMT. Workflow: `hackathon-build`. Read `SPEC.md` 
 
 ## Owner decisions
 
+- Every assumption about an opponent must be adaptive to the profile (SPEC.md, Strategy); unusual moves are gated per seat by measured responses (Sat 13:40).
+
 - Every routine task (code, simulations, data) goes to an Opus agent (`model: "opus"`). Fable is for planning and orchestration only; Owen moved this orchestrator session to Opus 5.5 at 13:15 because Fable was using too much of his plan.
 - Enter the Best Use of Adaption prize as well as the poker track.
 - Team repo: https://github.com/Josh-Lim18/fortnite-one-piece (public; Josh-Lim18 is team lead and owns every folder; Owen is `owenbonc`, a collaborator with write access and no area yet; its AGENTS.md says to ask the owner on the board, issue #1, before editing their folders). Owen's teammate's bot is the organisers' starter, unchanged.
@@ -25,6 +27,7 @@ Updated Sat 14 Nov 2026, 13:25 GMT. Workflow: `hackathon-build`. Read `SPEC.md` 
 | Preflop matchup table | `notes/slice-matchups.md` | Sonnet | merged | on main; strategy agent told |
 | Adaption dataset | `notes/slice-adaption-data.md` | Opus | merged | on main; data in `adaption/data/` (gitignored), sent to Owen |
 | Bet-size reads, robust profiling | `notes/slice-reads.md` | Opus | not started | launch after strategy merges (same file) |
+| Adaptive pressure moves | `notes/slice-pressure.md` | Opus | not started | launch after reads merges (same file) |
 | Adaption platform research | prompt only, read-only | Opus | none | reported; facts below |
 
 Merge rule: in the agent's worktree `git merge main`, run `scripts/verify.sh`, then `git merge --ff-only <branch>` on main. `git worktree list` shows the worktrees.
@@ -32,7 +35,7 @@ Merge rule: in the agent's worktree `git merge main`, run `scripts/verify.sh`, t
 ## Next steps
 
 1. Merge each slice as it reports.
-2. After the strategy slice merges, launch `notes/slice-reads.md` on Opus. The strategy agent owns `bot.py` (`notes/slice-strategy.md`). When it reports, read its three comparisons, merge, and send `bot.py` to Owen to upload.
+2. Bot slices run one at a time, all on Opus: strategy (running), then `notes/slice-reads.md`, then `notes/slice-pressure.md`. Upload each that beats its predecessor. The strategy agent owns `bot.py` (`notes/slice-strategy.md`). When it reports, read its three comparisons, merge, and send `bot.py` to Owen to upload.
 3. Counted rounds run Sat 15:00–19:25; the Sat 19:20 upload plays Sunday's first rounds.
 4. When the token arrives: `python3 kit/fetch_hands.py --token ...`, run `tools/analyze.py hands/ --emit opponents/`, tune with `tools/tune.py`.
 5. Adaption: when the research and dataset agents report, convert the dataset to the platform's format and walk Owen through starting the fine-tune (he signs in and claims credits under My Pass on the event site).
