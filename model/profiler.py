@@ -22,14 +22,19 @@ BUCKETS = 10       # hand-strength buckets, 0 weakest
 HALF_LIFE = 150.0  # hands for an observation's weight to halve, so a change of style is re-read
 RANGE_M = 10.0     # a seat's own showdowns outweigh its type's range after this many
 SAMPLES = 40       # random hands a postflop hand is ranked against online
+BIG_CALL = 800     # a call this many chips (40% of the 2,000 stack every hand starts with) is a stack-off
+TEMPER = 0.05      # weight of each observation in the type posterior, fitted by evaluate.py --fit-temper
 
 
 def size_bucket(to_call, pot):
-    """The bet faced as a share of the pot: 0 none, 1 under 0.35, 2 to 0.8, 3 to 1.3, 4 over."""
+    """The bet faced: 0 none, 4 a stack-off call; otherwise as a share of the pot (which holds the bet), 1 under
+    0.35, 2 to 0.8, 3 over."""
     if to_call <= 0:
         return 0
+    if to_call >= BIG_CALL:
+        return 4
     x = to_call / pot
-    return 1 if x < 0.35 else 2 if x < 0.8 else 3 if x < 1.3 else 4
+    return 1 if x < 0.35 else 2 if x < 0.8 else 3
 
 
 def cell(street, size, raises):
@@ -81,8 +86,9 @@ def showdown_buckets(shown, board, rng, samples):
 
 
 class Profiler:
-    def __init__(self, n, fitted, counts=True, types=True):
+    def __init__(self, n, fitted, counts=True, types=True, temper=TEMPER):
         """`counts` and `types` off give the weaker versions evaluate.py scores against."""
+        self.temper = temper
         f = fitted
         self.pop, self.pop_m, self.types_p, self.type_m = f["pop"], f["pop_m"], f["types"], f["type_m"]
         self.prior = [math.log(w) for w in f["type_prior"]]
@@ -124,7 +130,7 @@ class Profiler:
                         self.observe_showdown(seat, street, last[seat, street], b)
 
     def type_posterior(self, seat):
-        decay = 2.0 ** (-self.hand / HALF_LIFE)
+        decay = self.temper * 2.0 ** (-self.hand / HALF_LIFE)
         lp = [p + decay * l for p, l in zip(self.prior, self.ll[seat])]
         top = max(lp)
         w = [math.exp(x - top) for x in lp]
