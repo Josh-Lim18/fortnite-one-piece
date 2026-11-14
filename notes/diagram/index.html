@@ -1,0 +1,670 @@
+<title>How Our Bot Works</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: a felt-green title band, then one 760px column. Diagrams fill the column (the two wide ones scroll sideways on phones); prose holds near 65ch. Layer colours are poker-chip colours and mean the same thing in every diagram. */
+:root {
+  --bg: #F2F5F2;
+  --surface: #FFFFFF;
+  --surface-2: #E6ECE7;
+  --ink: #14201A;
+  --ink-2: #4A5A51;
+  --line: #C2CEC6;
+  --felt: #18573B;
+  --on-felt: #EEF5F0;
+  --felt-ink: #B4D3C1;
+  --play: #1E6A47;
+  --on-play: #FFFFFF;
+  --l1: #2F5E9E;
+  --l2: #A8730C;
+  --l3: #B8392E;
+  --font-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0D1410;
+    --surface: #151F19;
+    --surface-2: #1C2922;
+    --ink: #E2EAE4;
+    --ink-2: #A0B1A7;
+    --line: #33443A;
+    --felt: #123222;
+    --on-felt: #E6F0E9;
+    --felt-ink: #8FB59F;
+    --play: #2E7D57;
+    --on-play: #F5FAF7;
+    --l1: #86A8E0;
+    --l2: #E1B455;
+    --l3: #EE7E71;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0D1410;
+  --surface: #151F19;
+  --surface-2: #1C2922;
+  --ink: #E2EAE4;
+  --ink-2: #A0B1A7;
+  --line: #33443A;
+  --felt: #123222;
+  --on-felt: #E6F0E9;
+  --felt-ink: #8FB59F;
+  --play: #2E7D57;
+  --on-play: #F5FAF7;
+  --l1: #86A8E0;
+  --l2: #E1B455;
+  --l3: #EE7E71;
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.6;
+}
+.wrap {
+  max-width: 792px;
+  margin-inline: auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+/* Title band */
+.band { background: var(--felt); color: var(--on-felt); }
+.band .wrap { padding-block: 48px 40px; }
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--felt-ink);
+  margin: 0 0 14px;
+}
+.eyebrow .suits { letter-spacing: 0.3em; margin-inline: 0.5em; }
+h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2.4rem, 7vw, 3.6rem);
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+  margin: 0;
+  text-wrap: balance;
+}
+.lede { font-size: 1.125rem; max-width: 56ch; margin: 16px 0 0; color: var(--on-felt); }
+
+/* Main column */
+main.wrap { padding-block: 32px 80px; display: flex; flex-direction: column; gap: 64px; }
+section { min-width: 0; }
+h2 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.75rem;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  margin: 0 0 10px;
+  text-wrap: balance;
+}
+h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.2rem;
+  margin: 32px 0 0;
+}
+p { margin: 0 0 12px; max-width: 65ch; }
+b { font-weight: 600; }
+a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:focus-visible, .scroll:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  background: var(--surface-2);
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+/* Layer chips: a poker chip with notched edge */
+.chip {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2.5px dashed var(--bg);
+  flex: none;
+}
+.chip.l1 { background: var(--l1); box-shadow: 0 0 0 1.5px var(--l1); }
+.chip.l2 { background: var(--l2); box-shadow: 0 0 0 1.5px var(--l2); }
+.chip.l3 { background: var(--l3); box-shadow: 0 0 0 1.5px var(--l3); }
+
+.legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 28px;
+  font-size: 15px;
+}
+.legend li { display: flex; align-items: center; gap: 10px; }
+.legend .who { color: var(--ink-2); }
+
+/* Figures */
+figure { margin: 20px 0 0; }
+figcaption { font-size: 14.5px; color: var(--ink-2); max-width: 65ch; margin-top: 10px; }
+.scroll { overflow-x: auto; }
+.scroll .dg { min-width: 540px; }
+.hint { display: none; font-size: 13px; color: var(--ink-2); margin: 0 0 6px; }
+@media (max-width: 600px) { .hint { display: block; } }
+
+.notes { list-style: none; padding: 0; margin: 20px 0 0; display: grid; gap: 14px; max-width: 65ch; }
+.notes li { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 12px; align-items: start; }
+.notes .chip { margin-top: 5px; }
+
+/* Owners */
+table { border-collapse: collapse; width: 100%; font-size: 15.5px; margin-top: 8px; }
+th, td { text-align: left; vertical-align: top; padding: 12px 12px 12px 0; border-bottom: 1px solid var(--line); }
+th { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); font-weight: 600; padding-block: 6px; }
+td.name { font-family: var(--font-display); font-weight: 600; font-size: 1.1rem; white-space: nowrap; width: 5.5rem; }
+td .line { display: flex; gap: 10px; align-items: baseline; }
+td .line .chip { align-self: center; }
+td .line + .line { margin-top: 4px; }
+
+/* Branches */
+.branches { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 10px 24px; margin: 16px 0 0; }
+.branches dt { font-family: var(--font-mono); font-size: 14px; padding-top: 2px; }
+.branches dd { margin: 0; }
+@media (max-width: 480px) {
+  .branches { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .branches dd { margin-bottom: 12px; }
+}
+
+/* Glossary */
+.glossary {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  gap: 14px 32px;
+  margin: 16px 0 0;
+}
+.glossary div { min-width: 0; }
+.glossary dt { font-weight: 600; }
+.glossary dd { margin: 0; color: var(--ink-2); font-size: 15px; }
+
+/* Inline SVG diagrams */
+.dg { display: block; width: 100%; height: auto; max-width: 720px; font-family: var(--font-body); }
+.dg.narrow { max-width: 540px; }
+.dg text { fill: var(--ink); font-size: 13px; }
+.dg .cap { font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em; fill: var(--ink-2); }
+.dg .t { font-size: 15px; font-weight: 600; }
+.dg .st { font-size: 12.5px; font-weight: 600; }
+.dg .b2 { font-size: 12px; }
+.dg .s { font-size: 11.5px; fill: var(--ink-2); }
+.dg .owner { font-size: 12px; font-weight: 500; fill: var(--ink-2); }
+.dg .time { font-size: 13px; font-weight: 600; font-family: var(--font-mono); }
+.dg .axis { font-family: var(--font-mono); font-size: 11px; fill: var(--ink-2); }
+.dg .box { fill: var(--surface); stroke: var(--line); }
+.dg .keybox { fill: var(--surface); stroke: var(--ink); stroke-width: 2; }
+.dg .row, .dg .hdr { fill: var(--surface-2); }
+.dg .dash { stroke-dasharray: 5 4; }
+.dg .arrow { stroke: var(--ink-2); stroke-width: 1.5; fill: none; }
+.dg .ah { fill: var(--ink-2); }
+.dg .key { stroke: var(--ink); stroke-width: 2.5; fill: none; }
+.dg .ahk { fill: var(--ink); }
+.dg .bracket { fill: none; stroke: var(--ink); stroke-width: 1.5; }
+.dg .boundary { stroke: var(--ink-2); stroke-width: 1.25; stroke-dasharray: 6 5; }
+.dg .pill { fill: var(--surface-2); stroke: var(--ink-2); }
+.dg .badge { fill: none; stroke: var(--ink-2); }
+.dg .badge-t { font-size: 11px; font-weight: 500; fill: var(--ink-2); }
+.dg .card { fill: var(--surface); stroke: var(--l3); stroke-width: 1.25; }
+.dg .c1 { fill: var(--l1); }
+.dg .c2 { fill: var(--l2); }
+.dg .c3 { fill: var(--l3); }
+.dg .edge { fill: none; stroke: var(--surface); stroke-width: 1.5; stroke-dasharray: 2.4 2.4; }
+.dg .x { stroke: var(--ink); stroke-width: 2; stroke-linecap: round; }
+.dg .grid { stroke: var(--line); }
+.dg .mark { stroke: var(--ink); stroke-width: 2; }
+.dg .dot { fill: var(--ink); }
+.dg .bar-play { fill: var(--play); }
+.dg .bar-open { fill: var(--surface-2); stroke: var(--ink); stroke-width: 1.25; stroke-dasharray: 4 3; }
+.dg .bar-ink { fill: var(--ink-2); }
+.dg .onplay { fill: var(--on-play); font-size: 12.5px; font-weight: 600; }
+.dg .onbar { fill: var(--bg); font-size: 12px; font-weight: 600; }
+.dg .tick { fill: none; stroke: var(--play); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.dg .numchip { fill: var(--ink); }
+.dg .num { fill: var(--bg); font-size: 12px; font-weight: 600; }
+.dg .markl { font-size: 12px; font-weight: 600; }
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<header class="band">
+  <div class="wrap">
+    <p class="eyebrow">Team Joca<span class="suits" aria-hidden="true">&spades;&hearts;&diams;&clubs;</span>Poker bot</p>
+    <h1>How our bot works</h1>
+    <p class="lede">What each part of the bot does, how each part is trained, and who owns it. Mostly pictures, with short notes underneath.</p>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <ul class="legend" aria-label="The three layers and their colours">
+    <li><span class="chip l1" aria-hidden="true"></span><span><b>Layer 1, Base</b> <span class="who">Anh</span></span></li>
+    <li><span class="chip l2" aria-hidden="true"></span><span><b>Layer 2, Behaviour</b> <span class="who">Owen</span></span></li>
+    <li><span class="chip l3" aria-hidden="true"></span><span><b>Layer 3, Picker and skills</b> <span class="who">Colin builds the skills</span></span></li>
+  </ul>
+
+  <section aria-labelledby="h-decision">
+    <h2 id="h-decision">One decision, three layers</h2>
+    <p>Every time it is our turn, the bot runs this whole path. Layers 1 and 2 work side by side. Layer 3 puts their answers together and picks one action.</p>
+    <p>This is the full design. The live bot today runs the base and a simpler layer 2 (one tally page per opponent, no personalities and no picker). The full layer 2 and the picker are being added to it one tested piece at a time.</p>
+    <figure>
+      <p class="hint">Swipe sideways to see the whole diagram.</p>
+      <div class="scroll" tabindex="0" role="region" aria-label="Diagram: one decision, three layers">
+        <svg class="dg" viewBox="0 0 600 836" role="img" aria-label="One decision. A hand arrives with our cards, the board, the pot and everyone's actions. Layer 1, the base, judges how strong our hand is and gives a base move. Layer 2, the behaviour notebook, predicts how likely each opponent is to fold, call or raise for each bet size, and what cards it probably holds. Layer 3, the picker, scores five playbook pages against the base move and returns fold, check, call or raise with a size. The whole path has 10 milliseconds per decision. The time bank is 10 seconds per 1,000-hand round, and the tournament computer is 10 to 15 times slower than a laptop.">
+          <defs>
+            <marker id="ah1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+          </defs>
+
+          <path class="bracket" d="M46,12 H38 V756 H46"/>
+          <text class="time" x="28" y="384" text-anchor="middle" transform="rotate(-90 28 384)">10 ms per decision</text>
+
+          <rect class="box" x="52" y="12" width="536" height="56" rx="4"/>
+          <text class="cap" x="68" y="34">A HAND ARRIVES</text>
+          <text x="68" y="55">our cards &middot; the board &middot; the pot &middot; everyone's actions</text>
+
+          <line class="arrow" x1="182" y1="68" x2="182" y2="118" marker-end="url(#ah1)"/>
+          <text class="s" x="190" y="98">our cards, board, pot</text>
+          <line class="arrow" x1="458" y1="68" x2="458" y2="118" marker-end="url(#ah1)"/>
+          <text class="s" x="466" y="98">everyone's actions</text>
+
+          <rect class="box" x="52" y="120" width="260" height="212" rx="4"/>
+          <circle class="c1" cx="70" cy="140" r="6"/><circle class="edge" cx="70" cy="140" r="4.4"/>
+          <text class="cap" x="84" y="144">LAYER 1 &middot; BASE</text>
+          <text class="owner" x="298" y="144" text-anchor="end">Anh</text>
+          <text class="t" x="66" y="172">How strong is my hand?</text>
+          <rect class="row" x="66" y="186" width="232" height="26" rx="3"/>
+          <text class="b2" x="76" y="203">169 starting hands, ranked</text>
+          <rect class="row" x="66" y="218" width="232" height="26" rx="3"/>
+          <text class="b2" x="76" y="235">Pre-computed matchup table</text>
+          <rect class="row" x="66" y="250" width="232" height="26" rx="3"/>
+          <text class="b2" x="76" y="267">After the flop: ~40 run-outs</text>
+          <text class="s" x="66" y="298">compared with the price to call</text>
+
+          <rect class="box" x="328" y="120" width="260" height="212" rx="4"/>
+          <circle class="c2" cx="346" cy="140" r="6"/><circle class="edge" cx="346" cy="140" r="4.4"/>
+          <text class="cap" x="360" y="144">LAYER 2 &middot; BEHAVIOUR</text>
+          <text class="owner" x="574" y="144" text-anchor="end">Owen</text>
+          <text class="t" x="342" y="172">The scouting notebook</text>
+          <rect class="row" x="342" y="186" width="232" height="26" rx="3"/>
+          <text class="b2" x="352" y="203">One page per opponent</text>
+          <rect class="row" x="342" y="218" width="232" height="26" rx="3"/>
+          <text class="b2" x="352" y="235">Tallies every action it takes</text>
+          <rect class="row" x="342" y="250" width="232" height="26" rx="3"/>
+          <text class="b2" x="352" y="267">Blends 5 personalities by weight</text>
+          <text class="s" x="342" y="298">for example: never folds,</text>
+          <text class="s" x="342" y="314">cautious, wild raiser</text>
+
+          <line class="arrow" x1="182" y1="332" x2="182" y2="398" marker-end="url(#ah1)"/>
+          <text class="st" x="190" y="370">base move</text>
+          <line class="arrow" x1="458" y1="332" x2="458" y2="398" marker-end="url(#ah1)"/>
+          <text class="s" x="450" y="356" text-anchor="end">for each bet size:</text>
+          <text class="s" x="450" y="371" text-anchor="end">fold / call / raise odds</text>
+          <text class="s" x="450" y="386" text-anchor="end">and likely cards</text>
+
+          <rect class="box" x="52" y="400" width="536" height="256" rx="4"/>
+          <circle class="c3" cx="70" cy="420" r="6"/><circle class="edge" cx="70" cy="420" r="4.4"/>
+          <text class="cap" x="84" y="424">LAYER 3 &middot; PICKER AND SKILLS</text>
+          <text class="owner" x="574" y="424" text-anchor="end">Colin builds the skills</text>
+          <text class="t" x="68" y="452">The coach picks a play from the playbook</text>
+
+          <rect class="card" x="68" y="466" width="92" height="66" rx="6"/>
+          <text class="st" x="114" y="494" text-anchor="middle">Value</text>
+          <text class="st" x="114" y="510" text-anchor="middle">shove</text>
+          <rect class="card" x="171" y="466" width="92" height="66" rx="6"/>
+          <text class="st" x="217" y="503" text-anchor="middle">Bluff</text>
+          <rect class="card" x="274" y="466" width="92" height="66" rx="6"/>
+          <text class="st" x="320" y="494" text-anchor="middle">Bet every</text>
+          <text class="st" x="320" y="510" text-anchor="middle">street</text>
+          <rect class="card" x="377" y="466" width="92" height="66" rx="6"/>
+          <text class="st" x="423" y="494" text-anchor="middle">Call the</text>
+          <text class="st" x="423" y="510" text-anchor="middle">shover</text>
+          <rect class="card" x="480" y="466" width="92" height="66" rx="6"/>
+          <text class="st" x="526" y="486" text-anchor="middle">Let the</text>
+          <text class="st" x="526" y="502" text-anchor="middle">barreller</text>
+          <text class="st" x="526" y="518" text-anchor="middle">bet</text>
+
+          <text class="b2" x="68" y="558">Each page is scored against the base move, using layer 2's predictions.</text>
+          <rect class="row" x="68" y="570" width="504" height="24" rx="3"/>
+          <text class="b2" x="78" y="586">A page clearly beats the base move</text>
+          <line class="arrow" x1="392" y1="582" x2="408" y2="582" marker-end="url(#ah1)"/>
+          <text class="st" x="416" y="586">play that page</text>
+          <rect class="row" x="68" y="596" width="504" height="24" rx="3"/>
+          <text class="b2" x="78" y="612">Some pages are nearly tied</text>
+          <line class="arrow" x1="392" y1="608" x2="408" y2="608" marker-end="url(#ah1)"/>
+          <text class="st" x="416" y="612">pick one at random</text>
+          <rect class="row" x="68" y="622" width="504" height="24" rx="3"/>
+          <text class="b2" x="78" y="638">Unsure, or a page's prediction keeps failing</text>
+          <line class="arrow" x1="392" y1="634" x2="408" y2="634" marker-end="url(#ah1)"/>
+          <text class="st" x="416" y="638">play the base move</text>
+
+          <line class="arrow" x1="320" y1="656" x2="320" y2="702" marker-end="url(#ah1)"/>
+          <text class="s" x="328" y="684">one action</text>
+
+          <rect class="box" x="52" y="704" width="536" height="52" rx="4"/>
+          <text class="cap" x="68" y="724">OUTPUT</text>
+          <text class="t" x="68" y="746">Fold, check, call, or raise (with a size)</text>
+
+          <rect class="box dash" x="52" y="774" width="536" height="50" rx="4"/>
+          <text class="st" x="68" y="795">Time bank: 10 s per 1,000-hand round</text>
+          <text class="s" x="68" y="813">The real tournament computer is 10&ndash;15&times; slower than a laptop.</text>
+        </svg>
+      </div>
+      <figcaption>A hand enters at the top and leaves as one action at the bottom. Everything inside the bracket has to fit in 10 ms.</figcaption>
+    </figure>
+    <ul class="notes">
+      <li><span class="chip l1" aria-hidden="true"></span><span><b>Base.</b> A run-out means dealing the rest of the cards many times and counting how often we win. The matchup table records how every starting hand fares against every other. The base compares our chance of winning with the price to call, and that gives the base move.</span></li>
+      <li><span class="chip l2" aria-hidden="true"></span><span><b>Behaviour.</b> Each opponent gets its own notebook page. The page blends five personalities by weight (refit on real tournament hands) and never settles on one fixed label. On real hands most of the value comes from the opponent's own tallies; the personalities help mainly in its first few dozen hands. From that blend it predicts how likely the opponent is to fold, call or raise if we bet a given amount, and what cards it probably holds.</span></li>
+      <li><span class="chip l3" aria-hidden="true"></span><span><b>Picker and skills.</b> The playbook has five pages. Value shove: go all-in with a strong hand. Bluff: bet a weak hand so they fold. Bet every street: the plan to get all the chips in by the river. Call the shover: call an opponent who goes all-in. Let the barreller bet: let an opponent who keeps betting carry on. Random picks happen only between near-ties.</span></li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="h-training">
+    <h2 id="h-training">How each part is trained</h2>
+    <p>All lasting learning happens on our laptops. The tournament starts a fresh bot every round, so the bot can't learn between rounds by itself. A lesson reaches the table only when we upload a new version.</p>
+    <figure>
+      <p class="hint">Swipe sideways to see the whole diagram.</p>
+      <div class="scroll" tabindex="0" role="region" aria-label="Diagram: how each part is trained">
+        <svg class="dg" viewBox="0 0 600 664" role="img" aria-label="Training, one lane per layer, all on our laptops. Base: tables pre-computed by simulating millions of hands, settings tuned with same-deals tests, and an optional small neural network trained on Isaac's GPU. Behaviour: fitted on simulated bots where every card is visible, then on real tournament hands downloaded from the site, then checked on rounds it never saw. Picker and skills: each skill tested alone, clones of real teams built from downloaded hands, picker tuned with same-deals tests against the clones. All three lanes feed a new version of the bot, which we upload. In the tournament every round starts a fresh bot; inside a game layer 2 learns from every action and old evidence fades, but nothing carries over between rounds by itself.">
+          <defs>
+            <marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+            <marker id="ahk2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="4.5" markerHeight="4.5" orient="auto"><path class="ahk" d="M0,0 L10,5 L0,10 z"/></marker>
+          </defs>
+
+          <text class="cap" x="12" y="18">ON OUR LAPTOPS &middot; WHERE ALL LASTING LEARNING HAPPENS</text>
+
+          <rect class="hdr" x="12" y="30" width="184" height="46" rx="4"/>
+          <circle class="c1" cx="30" cy="53" r="7"/><circle class="edge" cx="30" cy="53" r="5.2"/>
+          <text class="cap" x="44" y="49">LAYER 1</text>
+          <text class="t" x="44" y="67">Base</text>
+          <rect class="hdr" x="208" y="30" width="184" height="46" rx="4"/>
+          <circle class="c2" cx="226" cy="53" r="7"/><circle class="edge" cx="226" cy="53" r="5.2"/>
+          <text class="cap" x="240" y="49">LAYER 2</text>
+          <text class="t" x="240" y="67">Behaviour</text>
+          <rect class="hdr" x="404" y="30" width="184" height="46" rx="4"/>
+          <circle class="c3" cx="422" cy="53" r="7"/><circle class="edge" cx="422" cy="53" r="5.2"/>
+          <text class="cap" x="436" y="49">LAYER 3</text>
+          <text class="t" x="436" y="67">Picker and skills</text>
+
+          <!-- Base lane -->
+          <rect class="box" x="12" y="90" width="184" height="88" rx="4"/>
+          <text class="st" x="24" y="112">Pre-compute tables</text>
+          <text class="s" x="24" y="132">simulate millions of</text>
+          <text class="s" x="24" y="148">hands on a laptop</text>
+          <line class="arrow" x1="104" y1="178" x2="104" y2="196" marker-end="url(#ah2)"/>
+          <rect class="box" x="12" y="198" width="184" height="88" rx="4"/>
+          <text class="st" x="24" y="220">Tune the settings</text>
+          <rect class="badge" x="24" y="230" width="124" height="18" rx="9"/>
+          <text class="badge-t" x="35" y="243">same-deals tests</text>
+          <text class="s" x="24" y="268">two versions, same cards</text>
+          <line class="arrow" x1="104" y1="286" x2="104" y2="304" marker-end="url(#ah2)"/>
+          <rect class="box dash" x="12" y="306" width="184" height="88" rx="4"/>
+          <text class="st" x="24" y="328">Optional: neural net</text>
+          <text class="s" x="24" y="348">built on a laptop; more</text>
+          <text class="s" x="24" y="364">data on Isaac's GPU</text>
+          <text class="s" x="24" y="380">hand strength, faster</text>
+
+          <!-- Behaviour lane -->
+          <rect class="box" x="208" y="90" width="184" height="88" rx="4"/>
+          <text class="st" x="220" y="112">Fit on simulated bots</text>
+          <text class="s" x="220" y="132">every card is visible</text>
+          <line class="arrow" x1="300" y1="178" x2="300" y2="196" marker-end="url(#ah2)"/>
+          <rect class="box" x="208" y="198" width="184" height="88" rx="4"/>
+          <text class="st" x="220" y="220">Fit on real hands</text>
+          <text class="s" x="220" y="240">downloaded from the site;</text>
+          <text class="s" x="220" y="256">cards only at showdown,</text>
+          <text class="s" x="220" y="272">every action and team name</text>
+          <line class="arrow" x1="300" y1="286" x2="300" y2="304" marker-end="url(#ah2)"/>
+          <rect class="box" x="208" y="306" width="184" height="88" rx="4"/>
+          <text class="st" x="220" y="328">Check on unseen rounds</text>
+          <text class="s" x="220" y="348">how well does it predict</text>
+          <text class="s" x="220" y="364">opponents' next actions?</text>
+
+          <!-- Picker lane -->
+          <rect class="box" x="404" y="90" width="184" height="88" rx="4"/>
+          <text class="st" x="416" y="112">Test each skill alone</text>
+          <text class="s" x="416" y="132">on tables where it should</text>
+          <text class="s" x="416" y="148">fire, and on tables where</text>
+          <text class="s" x="416" y="164">it shouldn't</text>
+          <line class="arrow" x1="496" y1="178" x2="496" y2="196" marker-end="url(#ah2)"/>
+          <rect class="box" x="404" y="198" width="184" height="88" rx="4"/>
+          <text class="st" x="416" y="220">Clone real teams</text>
+          <text class="s" x="416" y="240">copycat bots built from</text>
+          <text class="s" x="416" y="256">the downloaded hands</text>
+          <line class="arrow" x1="496" y1="286" x2="496" y2="304" marker-end="url(#ah2)"/>
+          <rect class="box" x="404" y="306" width="184" height="88" rx="4"/>
+          <text class="st" x="416" y="328">Tune the picker</text>
+          <rect class="badge" x="416" y="338" width="124" height="18" rx="9"/>
+          <text class="badge-t" x="427" y="351">same-deals tests</text>
+          <text class="s" x="416" y="376">against the clones</text>
+
+          <line class="arrow" x1="104" y1="394" x2="104" y2="416" marker-end="url(#ah2)"/>
+          <line class="arrow" x1="300" y1="394" x2="300" y2="416" marker-end="url(#ah2)"/>
+          <line class="arrow" x1="496" y1="394" x2="496" y2="416" marker-end="url(#ah2)"/>
+          <rect class="pill" x="12" y="418" width="576" height="30" rx="15"/>
+          <text class="st" x="300" y="438" text-anchor="middle">A new version of the bot</text>
+
+          <line class="boundary" x1="0" y1="478" x2="600" y2="478"/>
+          <line class="key" x1="300" y1="448" x2="300" y2="519" marker-end="url(#ahk2)"/>
+          <text class="markl" x="310" y="468">we upload it</text>
+          <text class="cap" x="12" y="500">IN THE TOURNAMENT</text>
+
+          <rect class="box" x="12" y="522" width="176" height="102" rx="4"/>
+          <text class="st" x="24" y="544">This round</text>
+          <text class="s" x="24" y="564">starts with a fresh bot</text>
+          <text class="s" x="24" y="580">layer 2 learns from every</text>
+          <text class="s" x="24" y="596">action at the table;</text>
+          <text class="s" x="24" y="612">old evidence fades</text>
+          <rect class="keybox" x="212" y="522" width="176" height="102" rx="4"/>
+          <text class="st" x="224" y="544">Next round</text>
+          <text class="s" x="224" y="564">fresh bot, new version</text>
+          <text class="s" x="224" y="580">layer 2 learns from every</text>
+          <text class="s" x="224" y="596">action at the table;</text>
+          <text class="s" x="224" y="612">old evidence fades</text>
+          <rect class="box" x="412" y="522" width="176" height="102" rx="4"/>
+          <text class="st" x="424" y="544">Round after</text>
+          <text class="s" x="424" y="564">starts with a fresh bot</text>
+          <text class="s" x="424" y="580">layer 2 learns from every</text>
+          <text class="s" x="424" y="596">action at the table;</text>
+          <text class="s" x="424" y="612">old evidence fades</text>
+
+          <line class="x" x1="195" y1="568" x2="205" y2="578"/><line class="x" x1="205" y1="568" x2="195" y2="578"/>
+          <line class="x" x1="395" y1="568" x2="405" y2="578"/><line class="x" x1="405" y1="568" x2="395" y2="578"/>
+          <line class="x" x1="132" y1="641" x2="142" y2="651"/><line class="x" x1="142" y1="641" x2="132" y2="651"/>
+          <text class="s" x="150" y="650">Nothing carries over from one round to the next by itself.</text>
+        </svg>
+      </div>
+      <figcaption>One lane per layer. Each lane's work goes into a new version of the bot, and only an upload gets it to the table. A dashed box is optional.</figcaption>
+    </figure>
+    <p style="margin-top:20px"><b>Same-deals test.</b> Two versions of the bot play identical cards, so luck is the same for both. We keep a change only if it wins by more than its error bar, the margin that luck alone could explain.</p>
+    <p><b>Fitted offline.</b> Layer 2 is set up on our laptops before it plays: first on simulated bots, where every card is visible, then on real tournament hands. It is judged on rounds it never saw, by how well it predicts opponents' next actions.</p>
+  </section>
+
+  <section aria-labelledby="h-loop">
+    <h2 id="h-loop">The improvement loop over the weekend</h2>
+    <p>This is how a better bot reaches the tournament. We can only finish the loop while uploads are open.</p>
+    <figure>
+      <svg class="dg narrow" viewBox="0 0 460 522" role="img" aria-label="The improvement loop. 1, the live bot plays. 2, download the hands with the team's data token. 3, field report, refit, and clones of real teams. 4, tune and test with same-deals comparisons. 5, lane D's safety check: file size, Python 3.12 standard library, zero errors, thinking time well under the bank. 6, upload; it plays from the next round, and the loop starts again.">
+        <defs>
+          <marker id="ah3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+        </defs>
+
+        <rect class="box" x="56" y="12" width="392" height="54" rx="4"/>
+        <circle class="numchip" cx="80" cy="39" r="12"/><text class="num" x="80" y="43.5" text-anchor="middle">1</text>
+        <text class="t" x="104" y="35">Live bot plays</text>
+        <text class="s" x="104" y="54">right now: v1-fast (Joca v4)</text>
+        <line class="arrow" x1="80" y1="66" x2="80" y2="84" marker-end="url(#ah3)"/>
+
+        <rect class="box" x="56" y="86" width="392" height="54" rx="4"/>
+        <circle class="numchip" cx="80" cy="113" r="12"/><text class="num" x="80" y="117.5" text-anchor="middle">2</text>
+        <text class="t" x="104" y="109">Download the hands</text>
+        <text class="s" x="104" y="128">with the team's data token</text>
+        <line class="arrow" x1="80" y1="140" x2="80" y2="158" marker-end="url(#ah3)"/>
+
+        <rect class="box" x="56" y="160" width="392" height="54" rx="4"/>
+        <circle class="numchip" cx="80" cy="187" r="12"/><text class="num" x="80" y="191.5" text-anchor="middle">3</text>
+        <text class="t" x="104" y="183">Field report and refit</text>
+        <text class="s" x="104" y="202">plus clones of real teams</text>
+        <line class="arrow" x1="80" y1="214" x2="80" y2="232" marker-end="url(#ah3)"/>
+
+        <rect class="box" x="56" y="234" width="392" height="54" rx="4"/>
+        <circle class="numchip" cx="80" cy="261" r="12"/><text class="num" x="80" y="265.5" text-anchor="middle">4</text>
+        <text class="t" x="104" y="257">Tune and test</text>
+        <rect class="badge" x="216" y="243" width="124" height="18" rx="9"/>
+        <text class="badge-t" x="227" y="256">same-deals tests</text>
+        <text class="s" x="104" y="276">two versions play the same cards</text>
+        <line class="arrow" x1="80" y1="288" x2="80" y2="306" marker-end="url(#ah3)"/>
+
+        <rect class="box" x="56" y="308" width="392" height="110" rx="4"/>
+        <circle class="numchip" cx="80" cy="335" r="12"/><text class="num" x="80" y="339.5" text-anchor="middle">5</text>
+        <text class="t" x="104" y="331">Lane D safety check</text>
+        <polyline class="tick" points="104,350 107.5,353.5 113,346"/>
+        <text class="b2" x="120" y="354">file size</text>
+        <polyline class="tick" points="104,368 107.5,371.5 113,364"/>
+        <text class="b2" x="120" y="372">Python 3.12 standard library</text>
+        <polyline class="tick" points="104,386 107.5,389.5 113,382"/>
+        <text class="b2" x="120" y="390">zero errors</text>
+        <polyline class="tick" points="104,404 107.5,407.5 113,400"/>
+        <text class="b2" x="120" y="408">thinking time well under the bank</text>
+        <line class="arrow" x1="80" y1="418" x2="80" y2="436" marker-end="url(#ah3)"/>
+
+        <rect class="keybox" x="56" y="438" width="392" height="72" rx="4"/>
+        <circle class="numchip" cx="80" cy="465" r="12"/><text class="num" x="80" y="469.5" text-anchor="middle">6</text>
+        <text class="t" x="104" y="461">Upload</text>
+        <text class="s" x="104" y="480">it plays from the next round</text>
+        <text class="s" x="104" y="498">only while uploads are open (times below)</text>
+
+        <path class="arrow" d="M56,474 H26 V39 H54" marker-end="url(#ah3)"/>
+        <text class="s" x="18" y="256" text-anchor="middle" transform="rotate(-90 18 256)">next round</text>
+      </svg>
+      <figcaption>Six steps, then round again. Step 5 is lane D's check that a new version is safe to upload.</figcaption>
+    </figure>
+
+    <h3>Key times</h3>
+    <figure>
+      <svg class="dg narrow" viewBox="0 0 460 268" role="img" aria-label="Weekend times. Saturday: counted rounds from 15:00 to 19:25, uploads close at 19:30. Sunday: uploads open from 09:00 to 12:00, bucket tables from 09:00 to 11:55, final table at 12:05.">
+        <text class="cap" x="24" y="18">SATURDAY</text>
+        <line class="grid" x1="60" y1="48" x2="60" y2="96"/>
+        <line class="grid" x1="132" y1="48" x2="132" y2="96"/>
+        <line class="grid" x1="204" y1="48" x2="204" y2="96"/>
+        <line class="grid" x1="276" y1="48" x2="276" y2="96"/>
+        <line class="grid" x1="348" y1="48" x2="348" y2="96"/>
+        <rect class="bar-play" x="60" y="56" width="318" height="26" rx="3"/>
+        <text class="onplay" x="70" y="74">Counted rounds 15:00&ndash;19:25</text>
+        <line class="mark" x1="384" y1="30" x2="384" y2="96"/>
+        <text class="markl" x="378" y="42" text-anchor="end">Uploads close 19:30</text>
+        <text class="axis" x="60" y="114" text-anchor="middle">15:00</text>
+        <text class="axis" x="132" y="114" text-anchor="middle">16:00</text>
+        <text class="axis" x="204" y="114" text-anchor="middle">17:00</text>
+        <text class="axis" x="276" y="114" text-anchor="middle">18:00</text>
+        <text class="axis" x="348" y="114" text-anchor="middle">19:00</text>
+
+        <text class="cap" x="24" y="152">SUNDAY</text>
+        <line class="grid" x1="60" y1="162" x2="60" y2="240"/>
+        <line class="grid" x1="132" y1="162" x2="132" y2="240"/>
+        <line class="grid" x1="204" y1="162" x2="204" y2="240"/>
+        <line class="grid" x1="276" y1="162" x2="276" y2="240"/>
+        <rect class="bar-open" x="60" y="170" width="216" height="24" rx="3"/>
+        <text class="st" x="70" y="187">Uploads open 09:00&ndash;12:00</text>
+        <rect class="bar-play" x="60" y="202" width="210" height="24" rx="3"/>
+        <text class="onplay" x="70" y="219">Bucket tables 09:00&ndash;11:55</text>
+        <line class="mark" x1="282" y1="166" x2="282" y2="240"/>
+        <circle class="dot" cx="282" cy="166" r="5"/>
+        <text class="markl" x="292" y="190">Final table 12:05</text>
+        <text class="axis" x="60" y="256" text-anchor="middle">09:00</text>
+        <text class="axis" x="132" y="256" text-anchor="middle">10:00</text>
+        <text class="axis" x="204" y="256" text-anchor="middle">11:00</text>
+        <text class="axis" x="276" y="256" text-anchor="middle">12:00</text>
+      </svg>
+      <figcaption>Both days use the same hour scale. Saturday's uploads close at 19:30, and the next chance to upload is Sunday from 09:00 to 12:00.</figcaption>
+    </figure>
+  </section>
+
+  <section aria-labelledby="h-owners">
+    <h2 id="h-owners">Who owns what</h2>
+    <table>
+      <thead><tr><th scope="col">Person</th><th scope="col">Looks after</th></tr></thead>
+      <tbody>
+        <tr><td class="name">Josh</td><td><div class="line">Arena and integration (fitting the parts together).</div><div class="line">Team lead.</div></td></tr>
+        <tr><td class="name">Anh</td><td><div class="line"><span class="chip l1" aria-hidden="true"></span><span>Layer 1, the base.</span></div><div class="line">Public-bot research.</div></td></tr>
+        <tr><td class="name">Owen</td><td><div class="line"><span class="chip l2" aria-hidden="true"></span><span>Layer 2, behaviour.</span></div><div class="line">Lane D: evaluation and quality.</div></td></tr>
+        <tr><td class="name">Colin</td><td><div class="line"><span class="chip l3" aria-hidden="true"></span><span>Layer 3 skills.</span></div><div class="line">Lane D reviews.</div></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section aria-labelledby="h-where">
+    <h2 id="h-where">Where things live</h2>
+    <p>Everything is on GitHub in <a href="https://github.com/Josh-Lim18/fortnite-one-piece">Josh-Lim18/fortnite-one-piece</a>. A branch is a separate line of work in the same code.</p>
+    <dl class="branches">
+      <dt>poker/live</dt><dd>The live bot, v1-fast.</dd>
+      <dt>poker/bot</dt><dd>The three-layer picker version. A candidate, not uploaded yet.</dd>
+      <dt>eval/benchmark</dt><dd>Lane D's checks.</dd>
+    </dl>
+  </section>
+
+  <section aria-labelledby="h-live">
+    <h2 id="h-live">What's live right now</h2>
+    <p><b>v1-fast</b>, also called Joca v4. It is the base plus a simpler version of layer 2.</p>
+    <p>The first version, v1, used up to 10.03 s of its 10 s time bank. Once it ran out completely and was forced to check or fold 41 times. v1-fast does the same thinking about 3&times; faster.</p>
+    <figure>
+      <svg class="dg narrow" viewBox="0 0 460 116" role="img" aria-label="Thinking time per 1,000-hand round against the 10 second bank: v1 used up to 10.03 seconds, v1-fast used 2.03 seconds in its first real round.">
+        <line class="grid" x1="110" y1="18" x2="110" y2="92"/>
+        <line class="grid" x1="260" y1="18" x2="260" y2="92"/>
+        <text class="st" x="100" y="41" text-anchor="end">v1</text>
+        <rect class="bar-ink" x="110" y="26" width="300.9" height="22" rx="2"/>
+        <text class="onbar" x="402" y="41" text-anchor="end">up to 10.03 s</text>
+        <text class="st" x="100" y="75" text-anchor="end">v1-fast</text>
+        <rect class="bar-play" x="110" y="60" width="60.9" height="22" rx="2"/>
+        <text class="b2" x="178" y="75">2.03 s in its first real round</text>
+        <line class="mark" x1="410" y1="14" x2="410" y2="92"/>
+        <text class="axis" x="110" y="108" text-anchor="middle">0 s</text>
+        <text class="axis" x="260" y="108" text-anchor="middle">5 s</text>
+        <text class="axis" x="410" y="108" text-anchor="middle">10 s bank</text>
+      </svg>
+      <figcaption>Thinking time in one 1,000-hand round, drawn to scale against the 10 s bank.</figcaption>
+    </figure>
+  </section>
+
+  <section aria-labelledby="h-adaption">
+    <h2 id="h-adaption">A separate thing: the Adaption prize</h2>
+    <p>This is a language model (a chat-style AI) fine-tuned on our bot's decisions, each paired with a written reason. It is our entry for the &ldquo;Best Use of Adaption&rdquo; prize.</p>
+    <p>It can't play in the tournament. The tournament sandbox allows 10 ms per decision, 200 KB and no internet, and this model is far too big and slow for that.</p>
+  </section>
+
+  <section aria-labelledby="h-words">
+    <h2 id="h-words">Words we use</h2>
+    <dl class="glossary">
+      <div><dt>Board</dt><dd>The shared cards in the middle of the table.</dd></div>
+      <div><dt>Pot</dt><dd>The chips bet so far in this hand.</dd></div>
+      <div><dt>Price to call</dt><dd>How many chips we must add to stay in the hand.</dd></div>
+      <div><dt>Flop and river</dt><dd>The flop is the first three shared cards. The river is the last one.</dd></div>
+      <div><dt>Street</dt><dd>One round of betting within a hand.</dd></div>
+      <div><dt>Run-out</dt><dd>Dealing the rest of the cards to see who would win.</dd></div>
+      <div><dt>Showdown</dt><dd>The end of a hand, when the players left show their cards.</dd></div>
+      <div><dt>Same-deals test</dt><dd>Two versions play identical cards, so luck is the same for both.</dd></div>
+      <div><dt>Error bar</dt><dd>How much a result could move by luck alone.</dd></div>
+      <div><dt>Neural network</dt><dd>A program that learns patterns from examples.</dd></div>
+      <div><dt>GPU</dt><dd>A graphics chip that is very fast at this kind of maths.</dd></div>
+      <div><dt>Clone of a real team</dt><dd>A copycat bot built from the hands that team played.</dd></div>
+      <div><dt>Time bank</dt><dd>The 10 s of thinking time the bot gets for each 1,000-hand round.</dd></div>
+      <div><dt>Data token</dt><dd>The team's key for downloading hands from the site.</dd></div>
+      <div><dt>Lane D</dt><dd>Evaluation and quality: checking each version before it goes out.</dd></div>
+      <div><dt>Standard library</dt><dd>The tools built into Python, with nothing extra installed.</dd></div>
+      <div><dt>Bucket tables</dt><dd>Sunday's tables from 09:00 to 11:55, before the final table at 12:05.</dd></div>
+      <div><dt>Sandbox</dt><dd>The locked-down tournament computer the bot runs on.</dd></div>
+    </dl>
+  </section>
+
+</main>
