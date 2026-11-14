@@ -8,6 +8,7 @@ carry "bots", the file each seat played, and keep hole cards only for seats that
 """
 import argparse
 import glob
+import hashlib
 import json
 import multiprocessing
 import os
@@ -64,13 +65,17 @@ def simulate(rounds, seed, out):
 
 
 def load(path):
-    """(round from load_hands, bot file per seat or None for real data). Every seat of a simulated round is an opponent."""
+    """(round from load_hands, label per seat). Simulated rounds label every seat by its bot file and every seat is
+    an opponent; real rounds label each rival seat "team <hash>", so fitted.py names no team, and ours None."""
     rnd = load_hands(path)
     with open(path) as f:
         data = json.load(f)
     bots = data.get("bots")
     if bots:
         rnd["seat"] = None
+    elif rnd["players"]:
+        bots = [None if i == rnd["seat"] else "team " + hashlib.md5(p.encode()).hexdigest()[:6]
+                for i, p in enumerate(rnd["players"])]
     for h, raw in zip(rnd["hands"], data["hands"]):
         h["dealt"] = {int(s): c for s, c in (raw.get("dealt") or {}).items()}
     return rnd, bots
