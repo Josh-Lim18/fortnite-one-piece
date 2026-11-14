@@ -1,0 +1,10 @@
+# Backups from the strategy tournament: kept only for a scenario where they may beat the winner.
+# None is wired into autopicker-lc automatically; swap in with candidates/improved/autopicker_lc/build.py --shove minimal.
+- id: shove-defense-minimal
+  problem: shove-defense (calling preflop jams)
+  file: ../tournament/shove-defense/minimal.py
+  winner: shove-defense/balanced (used in autopicker-lc)
+  trigger: "a seat jams preflop in >= 20% of its hands, or shows jam hands outside the top 40%"
+  beats_winner_by: "+60 bb/100 on the shove-defense table (147 vs 87), NOT significant (CIs ±104-114)"
+  do_not_use_when: "jams come from tight/value-only players (nits, QQ+/AK chart jammers); slightly negative on gen_shover / gen_tough"
+  status: unconfirmed; re-test with --until-decided in Josh's arena before relying on it
