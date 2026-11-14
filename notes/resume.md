@@ -1,6 +1,6 @@
 # Resume note
 
-## CURRENT Sat 14 Nov 18:40 GMT (orchestrator 2, picked up 17:48)
+## CURRENT Sat 14 Nov 19:03 GMT (orchestrator 2, picked up 17:48)
 
 Workflow: `hackathon-build` (`~/.claude/skills/hackathon-build/SKILL.md`), with orchestrated-build's hand-over rules. Read this section, then `SPEC.md` (sections "Time budget" and "Strategy"). Everything below this section is history.
 
@@ -26,10 +26,17 @@ Workflow: `hackathon-build` (`~/.claude/skills/hackathon-build/SKILL.md`), with 
 - **Colin's layer 3** (PR #12): layers on vs off on the real clones −1.0 ± 2.9. Not ported. For Sunday it's Colin's, built on `poker/live` within the 25% share, gated skill by skill against PR #14's bot.
 - **PR #4** (lane D, relative gate) pushed at 715645a.
 
+- **Real result of the live bot:** r046 (version 5, PR #14's bot) −54.3 bb/100, think_s 1.69 s, 0 timeouts. One round is noise (v1-fast: −22.4 ± 36.9 per round over 22 rounds).
+- **Why Joca loses** (`notes/field-report.md`, last section): tight preflop, passive postflop (AF 1.18 vs winners about 2.9), sticky when bet into (fold-to-bet 33% vs about 50%). The clones in `opponents/real/` are far softer than the field: v1-fast +123 against them, −22 for real. Every gate so far measured against soft opponents.
+- **In flight overnight:** field-calibrated gate pool (`notes/slice-field-pool.md`), an Opus subagent of orchestrator 2 in its own worktree, 3-hour box from 19:02. Report: its final message, and `notes/reports/field-pool.md` on its branch.
+- **PR #15** (Anh: Josh's `range_equity` speed-up on #14, same decisions, about 0.45x time): verify READY on macOS. Not uploaded.
+- **Layer 3:** handed to Colin on the board (rebuild on PR #14's branch, 25% time share, skill-by-skill gate, branch up by 10:30 Sunday).
+- **Data token:** Owen pasted it in chat at 18:47. It's used only on the command line (`cd ~/Downloads/poker-v1 && python3 -I fetch_hands.py --token …`) and never written to any file.
+
 ### Next steps, in order
 1. Keep one board watcher running (`cd team && uv run tools/board.py wait`, background, restart when it returns).
 2. After Owen's upload: he fetches the next round; read `think_s` and timeouts. Above 6 s, cut back.
-3. Sunday before 09:00: rebase `equity/live` onto PR #14's branch (the network replaces Anh's Monte Carlo only when on), gate it against PR #14's bot on the real clones, and quiet-laptop timing. Upload only with Owen's OK.
+3. Sunday before 09:00: read the field-pool report; if it validates, re-gate everything on it and send Anh the sweep results. Rebase `equity/live` onto PR #14's branch (the network replaces Anh's Monte Carlo only when on), gate it against PR #14's bot on the real clones, and quiet-laptop timing. Upload only with Owen's OK.
 4. Sunday by 12:00: the Devpost/README for the Adaption entry, if Owen keeps it. Presentation 13:00-16:30.
 
 ### Standing rules (Owen)
