@@ -1,0 +1,57 @@
+test_per_agent_rng_and_deadline_every_sample (test_floorfix.AdapterTests.test_per_agent_rng_and_deadline_every_sample) ... ok
+test_positions_use_button_and_allin_players_are_opponents (test_floorfix.AdapterTests.test_positions_use_button_and_allin_players_are_opponents) ... ok
+test_profiles_deduplicate_summaries_and_do_not_mutate_during_act (test_floorfix.AdapterTests.test_profiles_deduplicate_summaries_and_do_not_mutate_during_act) ... ok
+test_raise_bounds_short_allin_and_forbidden_raise (test_floorfix.AdapterTests.test_raise_bounds_short_allin_and_forbidden_raise) ... ok
+test_random_raise_bounds (test_floorfix.AdapterTests.test_random_raise_bounds) ... ok
+test_source_conservatism_is_retained (test_floorfix.AdapterTests.test_source_conservatism_is_retained) ... ok
+test_standalone_size_imports_and_local_timing (test_floorfix.AdapterTests.test_standalone_size_imports_and_local_timing) ... ok
+test_table_pair_bugfix_and_aa_opens_weak_hand_folds (test_floorfix.AdapterTests.test_table_pair_bugfix_and_aa_opens_weak_hand_folds) ... ok
+test_known_categories_and_compatibility_names (test_floorfix.EvaluatorTests.test_known_categories_and_compatibility_names) ... ok
+test_twelve_thousand_random_oracle_scores_and_order (test_floorfix.EvaluatorTests.test_twelve_thousand_random_oracle_scores_and_order) ... ok
+test_wheel_double_trips_and_board_ties (test_floorfix.EvaluatorTests.test_wheel_double_trips_and_board_ties) ... ok
+test_all_structures_and_streets_from_official_engine (test_nucats.OfficialStateTests.test_all_structures_and_streets_from_official_engine) ... ok
+test_official_short_all_in_and_raising_not_reopened (test_nucats.OfficialStateTests.test_official_short_all_in_and_raising_not_reopened) ... ok
+test_official_stack_capped_call_and_check_against_all_in (test_nucats.OfficialStateTests.test_official_stack_capped_call_and_check_against_all_in) ... ok
+test_single_file_stdlib_syntax_and_license (test_nucats.PackagingTests.test_single_file_stdlib_syntax_and_license) ... ok
+test_all_in_opponents_button_and_chip_scale (test_nucats.SourceFidelityTests.test_all_in_opponents_button_and_chip_scale) ... ok
+test_closed_raising_and_free_checks (test_nucats.SourceFidelityTests.test_closed_raising_and_free_checks) ... ok
+test_legal_short_and_fixed_raise_totals (test_nucats.SourceFidelityTests.test_legal_short_and_fixed_raise_totals) ... ok
+test_pot_odds_boundary (test_nucats.SourceFidelityTests.test_pot_odds_boundary) ... ok
+test_preserved_upstream_blob_hashes (test_nucats.SourceFidelityTests.test_preserved_upstream_blob_hashes) ... ok
+test_seeded_differential_against_original_decide (test_nucats.SourceFidelityTests.test_seeded_differential_against_original_decide) ... ok
+test_source_strength_quirks_and_thresholds_are_preserved (test_nucats.SourceFidelityTests.test_source_strength_quirks_and_thresholds_are_preserved) ... ok
+test_matches_upstream_after_documented_action_normalisation (test_shark.SharkTests.test_matches_upstream_after_documented_action_normalisation) ... ok
+test_original_rank_bug_is_explicitly_preserved (test_shark.SharkTests.test_original_rank_bug_is_explicitly_preserved) ... ok
+test_raise_bounds_and_closed_raising (test_shark.SharkTests.test_raise_bounds_and_closed_raising) ... ok
+test_actual_official_states_all_structures_and_short_stacks (test_textured.TexturedPolicyTests.test_actual_official_states_all_structures_and_short_stacks) ... ok
+test_all_seat_button_positions_and_extra_early_ranges (test_textured.TexturedPolicyTests.test_all_seat_button_positions_and_extra_early_ranges) ... ok
+test_blind_facing_open_recognition_preserves_real_price (test_textured.TexturedPolicyTests.test_blind_facing_open_recognition_preserves_real_price) ... ok
+test_deadline_guard_removed_without_suppressing_action (test_textured.TexturedPolicyTests.test_deadline_guard_removed_without_suppressing_action) ... ok
+test_explicit_raise_to_not_increment_and_allin_clamping (test_textured.TexturedPolicyTests.test_explicit_raise_to_not_increment_and_allin_clamping) ... ok
+test_forbidden_raise_is_legal_for_call_and_free_check (test_textured.TexturedPolicyTests.test_forbidden_raise_is_legal_for_call_and_free_check) ... ok
+test_inherited_coarse_postflop_flaws_preserved (test_textured.TexturedPolicyTests.test_inherited_coarse_postflop_flaws_preserved) ... ok
+test_opening_ranges_sizing_and_classifiers_retained (test_textured.TexturedPolicyTests.test_opening_ranges_sizing_and_classifiers_retained) ... ok
+test_packaging_python312_grammar_stdlib_and_size (test_textured.TexturedPolicyTests.test_packaging_python312_grammar_stdlib_and_size) ... ok
+test_source_differential_when_mapping_valid (test_textured.TexturedPolicyTests.test_source_differential_when_mapping_valid) ... ok
+test_named_edge_hands (test_vivelev.EvaluatorTests.test_named_edge_hands) ... ok
+test_seeded_random_differential (test_vivelev.EvaluatorTests.test_seeded_random_differential) ... ok
+test_wheel_and_kicker_order (test_vivelev.EvaluatorTests.test_wheel_and_kicker_order) ... ok
+test_deadline_finishes_at_least_one_and_stops (test_vivelev.MonteCarloTests.test_deadline_finishes_at_least_one_and_stops) ... ok
+test_independent_seeded_rollouts (test_vivelev.MonteCarloTests.test_independent_seeded_rollouts) ... ok
+test_rollouts_have_no_duplicate_or_known_cards (test_vivelev.MonteCarloTests.test_rollouts_have_no_duplicate_or_known_cards) ... ok
+test_ties_are_full_wins_as_upstream (test_vivelev.MonteCarloTests.test_ties_are_full_wins_as_upstream) ... ok
+test_single_file_stdlib_and_python312_syntax (test_vivelev.PackagingTests.test_single_file_stdlib_and_python312_syntax) ... ok
+test_all_in_opponent_is_not_folded (test_vivelev.PolicyTests.test_all_in_opponent_is_not_folded) ... ok
+test_official_engine_generated_states (test_vivelev.PolicyTests.test_official_engine_generated_states) ... ok
+test_original_strict_thresholds (test_vivelev.PolicyTests.test_original_strict_thresholds) ... ok
+test_short_all_in_raise_and_limits (test_vivelev.PolicyTests.test_short_all_in_raise_and_limits) ... ok
+test_unavailable_raise_and_free_check (test_vivelev.PolicyTests.test_unavailable_raise_and_free_check) ... ok
+
+----------------------------------------------------------------------
+Ran 48 tests in 0.752s
+
+OK
+
+In-process 8-seat flop timing, 200 actions (ms): median=0.522 p95=0.734 p99=0.925 max=1.047; excludes IPC, not a submission guarantee
+
+Official-state coverage: {"(7, 'no_limit')": 245, 'preflop': 1457, 'single_raise_amount': 820, 'allin_bound': 301, 'raising_closed': 756, 'source_differential': 1610, 'flop': 349, 'turn': 176, "(7, 'pot_limit')": 307, 'river': 126, "(7, 'fixed_limit')": 461, "(8, 'no_limit')": 292, "(8, 'pot_limit')": 354, "(8, 'fixed_limit')": 449}
