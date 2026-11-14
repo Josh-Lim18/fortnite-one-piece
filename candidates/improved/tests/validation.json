@@ -1,0 +1,103 @@
+{
+  "python": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+  "size_bytes": 30217,
+  "in_process": [
+    {
+      "players": 7,
+      "betting": "no_limit",
+      "cap": 0,
+      "decisions": 1702,
+      "max_ms": 0.34889999369625,
+      "errors": 0
+    },
+    {
+      "players": 7,
+      "betting": "no_limit",
+      "cap": 2,
+      "decisions": 1982,
+      "max_ms": 0.34869999217335135,
+      "errors": 0
+    },
+    {
+      "players": 7,
+      "betting": "pot_limit",
+      "cap": 0,
+      "decisions": 2378,
+      "max_ms": 0.2800999936880544,
+      "errors": 0
+    },
+    {
+      "players": 7,
+      "betting": "fixed_limit",
+      "cap": 0,
+      "decisions": 2904,
+      "max_ms": 1.5165000077104196,
+      "errors": 0
+    },
+    {
+      "players": 8,
+      "betting": "no_limit",
+      "cap": 0,
+      "decisions": 1849,
+      "max_ms": 0.2815999905578792,
+      "errors": 0
+    },
+    {
+      "players": 8,
+      "betting": "no_limit",
+      "cap": 2,
+      "decisions": 2192,
+      "max_ms": 0.5526000022655353,
+      "errors": 0
+    },
+    {
+      "players": 8,
+      "betting": "pot_limit",
+      "cap": 0,
+      "decisions": 2598,
+      "max_ms": 1.3625999999931082,
+      "errors": 0
+    },
+    {
+      "players": 8,
+      "betting": "fixed_limit",
+      "cap": 0,
+      "decisions": 3382,
+      "max_ms": 1.3952000008430332,
+      "errors": 0
+    }
+  ],
+  "subprocess": [
+    {
+      "players": 7,
+      "hands": 1000,
+      "decisions": 1604,
+      "timeouts": 0,
+      "errors": 0,
+      "error_samples": [],
+      "max_ms": 1.526,
+      "avg_ms": 0.211,
+      "bank_out": 0,
+      "total_ms": 338.05800005211495
+    },
+    {
+      "players": 8,
+      "hands": 1000,
+      "decisions": 1561,
+      "timeouts": 0,
+      "errors": 0,
+      "error_samples": [],
+      "max_ms": 1.079,
+      "avg_ms": 0.216,
+      "bank_out": 0,
+      "total_ms": 337.40550006041303
+    }
+  ],
+  "streets": [
+    "flop",
+    "preflop",
+    "river",
+    "turn"
+  ],
+  "short_calls": 2844
+}

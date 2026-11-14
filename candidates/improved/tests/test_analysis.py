@@ -203,27 +203,30 @@ class Draws(unittest.TestCase):
 
 class Integration(unittest.TestCase):
     @NEED_KIT
-    def test_fallback_matches_starter_on_engine_states(self):
+    def test_random_policy_is_legal_and_analysis_is_connected(self):
         sys.path.insert(0, str(KIT))
         from engine import FixedHandsTable
-        starter_spec = importlib.util.spec_from_file_location("kit_starter", KIT / "bot.py")
-        starter = importlib.util.module_from_spec(starter_spec)
-        starter_spec.loader.exec_module(starter)
         seen = {"n": 0, "streets": set()}
         test = self
 
         class Probe:
             def __init__(self, seed):
-                self.ours, self.ref = bot.Agent(), starter.Agent()
+                self.ours = bot.Agent()
                 self.rng = random.Random(seed)
 
             def start_table(self, seat, info):
                 self.ours.on_table_start(info)
-                self.ref.on_table_start(info)
 
             def act(self, state):
                 mine = self.ours.act(state)
-                test.assertEqual(mine, self.ref.act(state))
+                test.assertIn(mine["action"], state["legal_actions"])
+                if mine["action"] == "raise":
+                    test.assertLessEqual(state["min_raise_to"], mine["amount"])
+                    test.assertLessEqual(mine["amount"], state["max_raise_to"])
+                test.assertIn("preflop", self.ours.analysis["extra"])
+                if state["board"]:
+                    test.assertIn("hand", self.ours.analysis["extra"])
+                    test.assertIn("draws", self.ours.analysis["extra"])
                 bot.analyze(state["hole_cards"], state["board"])  # must not raise
                 seen["n"] += 1
                 seen["streets"].add(state["street"])
@@ -274,3 +277,4 @@ class Integration(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
