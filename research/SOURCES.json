@@ -1,0 +1,530 @@
+{
+  "schema_version": 1,
+  "scan_date": "2026-11-14",
+  "scope": "Lane B public-source intake: five reviewed standalone adapters plus one blocked competition source; six heavyweight exclusions include that same Advit source (11 unique repositories).",
+  "selection_basis": [
+    "Port feasibility under Python 3.12 stdlib, single file <=200KB, 10ms including IPC",
+    "Policy-family diversity and correct game/player-count mapping",
+    "Clear code and asset reuse scope",
+    "Evidence quality; GitHub stars and author win claims are not rankings"
+  ],
+  "target": {
+    "game": "No-limit Texas Hold'em",
+    "players": [
+      7,
+      8
+    ],
+    "starting_stack_each_hand": 2000,
+    "big_blind": 20,
+    "stack_reset_each_hand": true,
+    "python": "3.12",
+    "dependencies": "standard library only",
+    "max_file_bytes": 200000,
+    "decision_limit_ms_including_ipc": 10,
+    "round_hands": 1000,
+    "total_round_thinking_seconds": 10,
+    "byte_limit_note": "200KB ceiling stated by rules; use conservative 200,000-byte local intake ceiling."
+  },
+  "provenance_notes": [
+    "Pins are exact repository revisions recorded during read-only source inspection.",
+    "Framework exclusions were inspected by research_bot_frameworks; policy candidates by public_bot_candidates.",
+    "Source claims are separate from adapter execution evidence. Local adapters link to the manifest's retained timing history; no winner is selected.",
+    "All ranking claims are author-reported unless explicitly stated otherwise.",
+    "Preserve upstream license notices with any substantial copied code. Asset permission is assessed separately from source-code permission."
+  ],
+  "records": [
+    {
+      "id": "fullhouse_floorfix",
+      "category": "candidate",
+      "priority": 1,
+      "repository": "txnujk09/fullhouse-poker-bot",
+      "revision": "4fe154318949aa60430682416f148733c6f0d564",
+      "variant": "Six-player no-limit Texas Hold'em; persistent tournament stacks, 400-hand matches",
+      "family": "Tight-aggressive Monte Carlo equity with light opponent profiling",
+      "queue": "adapted_for_research_intake",
+      "license": {
+        "expression": "MIT",
+        "copyright": "2026 Tanuj Kakumani",
+        "scope": "Repository-authored bots, trainer and benchmark; official Fullhouse engine not redistributed.",
+        "copy_status": "clear_with_notice"
+      },
+      "source_bytes": 28701,
+      "runtime": {
+        "imports": [
+          "eval7",
+          "os",
+          "random",
+          "time"
+        ],
+        "assets": "No external policy/model asset for floorfix. Builds 169-class preflop equity table at import.",
+        "source_budget_seconds": {
+          "soft": 0.45,
+          "hard": 0.9
+        },
+        "imperial_fit": "Requires replacing eval7, precomputing import-time equity, reducing compute, mapping state/actions and chip units, and handling 7/8 seats."
+      },
+      "performance": {
+        "claim": "Top 64 Fullhouse Swiss qualifier; baseline approximately 98.6% wins and +25.5k mean chip delta against five reference bots.",
+        "evidence": "Author README; no independently verified official ranking retrieved.",
+        "caveat": "Reference-pool results are not competitive-field strength or Imperial results."
+      },
+      "limitations": [
+        "Use floorfix: original mybot omits pocket-pair preflop equity entries.",
+        "Tournament-survival assumptions do not transfer directly to 100BB reset hands.",
+        "CFR variant is separate, unshipped, and needs an uncommitted approximately 38MB blueprint."
+      ],
+      "evidence_review": "README, full MIT notice, main bot and final floorfix source inspected.",
+      "repository_url": "https://github.com/txnujk09/fullhouse-poker-bot",
+      "sources": {
+        "readme": "https://github.com/txnujk09/fullhouse-poker-bot/blob/4fe154318949aa60430682416f148733c6f0d564/README.md",
+        "license": "https://github.com/txnujk09/fullhouse-poker-bot/blob/4fe154318949aa60430682416f148733c6f0d564/LICENSE",
+        "policy": "https://github.com/txnujk09/fullhouse-poker-bot/blob/4fe154318949aa60430682416f148733c6f0d564/bots/floorfix/bot.py"
+      },
+      "acceptance_status": "Standalone adapter reviewed; actual Python 3.12.10 Windows tests executed. Timing reports include failures; see manifest validation_history. Sealed platform and competitive strength remain pending.",
+      "local_adapter": {
+        "entry_file": "candidates/imported/fullhouse_floorfix.py",
+        "sha256": "8d41454d6cafc10225ee474f807b9612dea8a73bd849dbf2ffd0d63a7c66c516",
+        "bytes": 34881,
+        "manifest": "research/manifest.json"
+      }
+    },
+    {
+      "id": "fullhouse_shark",
+      "category": "candidate",
+      "priority": 2,
+      "repository": "mbatv/fullhouse-engine",
+      "revision": "a80b26957db5f5515d9273a15d1b73aadf8985db",
+      "variant": "Fullhouse six-player no-limit Texas Hold'em reference opponent",
+      "family": "Simple preflop tiers, positional pressure and pot-odds calls",
+      "queue": "adapted_for_research_intake",
+      "license": {
+        "expression": "MIT",
+        "copyright": "2026 Fullhouse Hackathon",
+        "scope": "Engine repository and bundled reference bots.",
+        "copy_status": "clear_with_notice"
+      },
+      "source_bytes": 1933,
+      "runtime": {
+        "imports": [
+          "random"
+        ],
+        "assets": "None",
+        "source_budget_seconds": null,
+        "imperial_fit": "Small stdlib policy; needs state/action adapter and legal-action handling. No target timing claim."
+      },
+      "performance": {
+        "claim": "Official engine reference bot, not a competition winner.",
+        "evidence": "Repository README and source.",
+        "caveat": "Use only as a weak control; source naming does not indicate strength."
+      },
+      "limitations": [
+        "Ranks are sorted lexically, so some intended strong hands are misclassified.",
+        "Position is seat index divided by table size rather than button-relative position.",
+        "Postflop policy ignores made-hand strength."
+      ],
+      "evidence_review": "README, MIT notice and complete policy inspected; root confirmed policy path bots/shark.py.",
+      "repository_url": "https://github.com/mbatv/fullhouse-engine",
+      "sources": {
+        "readme": "https://github.com/mbatv/fullhouse-engine/blob/a80b26957db5f5515d9273a15d1b73aadf8985db/README.md",
+        "license": "https://github.com/mbatv/fullhouse-engine/blob/a80b26957db5f5515d9273a15d1b73aadf8985db/LICENSE",
+        "policy": "https://github.com/mbatv/fullhouse-engine/blob/a80b26957db5f5515d9273a15d1b73aadf8985db/bots/shark.py"
+      },
+      "acceptance_status": "Standalone adapter reviewed; actual Python 3.12.10 Windows tests executed. Timing reports include failures; see manifest validation_history. Sealed platform and competitive strength remain pending.",
+      "local_adapter": {
+        "entry_file": "candidates/imported/fullhouse_shark.py",
+        "sha256": "2d9aed30b745d398e27ab8ac5049781c1530fab1392623d8a7189d0598b69fb3",
+        "bytes": 3684,
+        "manifest": "research/manifest.json"
+      }
+    },
+    {
+      "id": "vivelev_monte_carlo",
+      "category": "candidate",
+      "priority": 3,
+      "repository": "VIVelev/PokerBot-AI",
+      "revision": "c1be1110b258fef0dedda91c28e8c2634b9e778c",
+      "variant": "PyPokerEngine no-limit Hold'em agent; simulated player count comes from game configuration",
+      "family": "Uniform-opponent Monte Carlo with fixed action thresholds",
+      "queue": "adapted_for_research_intake",
+      "license": {
+        "expression": "MIT",
+        "copyright": "2018 Victor Velev",
+        "scope": "Repository code.",
+        "copy_status": "clear_with_notice"
+      },
+      "source_bytes": 3835,
+      "runtime": {
+        "imports": [
+          "pypokerengine"
+        ],
+        "repository_dependencies": [
+          "numpy",
+          "pypokerengine",
+          "pypokergui"
+        ],
+        "assets": "None",
+        "simulations_per_action": 1000,
+        "imperial_fit": "Replace framework/evaluator and cap MC work; port is independent of GUI/server dependencies."
+      },
+      "performance": {
+        "claim": "Playable bot with documented local setup; no competition ranking found.",
+        "evidence": "README and complete source.",
+        "caveat": "No claim of high competitive strength."
+      },
+      "limitations": [
+        "Ties count as full wins rather than split equity.",
+        "Player count stays at initial table size even after folds.",
+        "Thresholds above 0.5/0.75/0.85 are poorly calibrated for multiway pots.",
+        "Assumes raising exists in the valid-action menu.",
+        "1,000 pure-Python multiway rollouts cannot be assumed to fit 10ms."
+      ],
+      "evidence_review": "README, requirements, MIT notice and complete Monte Carlo policy inspected.",
+      "repository_url": "https://github.com/VIVelev/PokerBot-AI",
+      "sources": {
+        "readme": "https://github.com/VIVelev/PokerBot-AI/blob/c1be1110b258fef0dedda91c28e8c2634b9e778c/README.md",
+        "license": "https://github.com/VIVelev/PokerBot-AI/blob/c1be1110b258fef0dedda91c28e8c2634b9e778c/LICENSE",
+        "policy": "https://github.com/VIVelev/PokerBot-AI/blob/c1be1110b258fef0dedda91c28e8c2634b9e778c/src/bots/monte_carlo.py",
+        "dependencies": "https://github.com/VIVelev/PokerBot-AI/blob/c1be1110b258fef0dedda91c28e8c2634b9e778c/requirements.txt"
+      },
+      "acceptance_status": "Standalone adapter reviewed; actual Python 3.12.10 Windows tests executed. Timing reports include failures; see manifest validation_history. Sealed platform and competitive strength remain pending.",
+      "local_adapter": {
+        "entry_file": "candidates/imported/vivelev_monte_carlo.py",
+        "sha256": "dc79942d2be13a3d6bb10cc4824ca15f61f1ae473da6d758372b5b04cd00a8d3",
+        "bytes": 6260,
+        "manifest": "research/manifest.json"
+      }
+    },
+    {
+      "id": "nucats_starter",
+      "category": "candidate",
+      "priority": 4,
+      "repository": "nucats-soc/NUCATS-Pokerbot",
+      "revision": "67cadea4486039ef279c6e4718e3b90d58134939",
+      "variant": "No-limit Hold'em, up to 8 bots; 1,000-chip initial stack, blinds 10/20, 20-hand match",
+      "family": "Made-hand categories and cheap-call rules",
+      "queue": "adapted_for_research_intake",
+      "license": {
+        "expression": "MIT",
+        "copyright": "2026 NUCATS",
+        "scope": "Repository code.",
+        "copy_status": "clear_with_notice"
+      },
+      "source_bytes": 3234,
+      "helper_bytes": 3890,
+      "runtime": {
+        "imports": [
+          "pokerbot",
+          "collections.Counter"
+        ],
+        "assets": "None; policy and card helper can be flattened into stdlib.",
+        "source_budget_seconds": 5,
+        "imperial_fit": "Low effort: inline helper, replace action constructors and state access. Eight-seat source is a useful format match."
+      },
+      "performance": {
+        "claim": "Educational starter/reference agent; no competition ranking found.",
+        "evidence": "README and complete policy/helper.",
+        "caveat": "Treat as weak made-hand control."
+      },
+      "limitations": [
+        "Board-only pairs can be mistaken for useful private-hand strength.",
+        "No kicker, opponent-range or player-count adjustment.",
+        "Source comments and thresholds differ: strength 0.7 includes two pair."
+      ],
+      "evidence_review": "README, MIT notice and complete policy/card helper inspected.",
+      "repository_url": "https://github.com/nucats-soc/NUCATS-Pokerbot",
+      "sources": {
+        "readme": "https://github.com/nucats-soc/NUCATS-Pokerbot/blob/67cadea4486039ef279c6e4718e3b90d58134939/README.md",
+        "license": "https://github.com/nucats-soc/NUCATS-Pokerbot/blob/67cadea4486039ef279c6e4718e3b90d58134939/LICENSE",
+        "policy": "https://github.com/nucats-soc/NUCATS-Pokerbot/blob/67cadea4486039ef279c6e4718e3b90d58134939/bots/my_bot.py",
+        "helper": "https://github.com/nucats-soc/NUCATS-Pokerbot/blob/67cadea4486039ef279c6e4718e3b90d58134939/bots/pokerbot/cards.py"
+      },
+      "acceptance_status": "Standalone adapter reviewed; actual Python 3.12.10 Windows tests executed. Timing reports include failures; see manifest validation_history. Sealed platform and competitive strength remain pending.",
+      "local_adapter": {
+        "entry_file": "candidates/imported/nucats_starter.py",
+        "sha256": "bd01e82f89ccb408523e96e6e9940c06b16202b71882091c6bd7346c9b09a298",
+        "bytes": 5682,
+        "manifest": "research/manifest.json"
+      }
+    },
+    {
+      "id": "devfun_textured",
+      "category": "candidate",
+      "priority": 5,
+      "repository": "devfun-org/poker-arena-starter-kit",
+      "revision": "fc19bb25e9c6e8fabc26099d6a767241fc99fc2f",
+      "variant": "Six-seat no-limit Hold'em reference policy for Arena Poker Eval",
+      "family": "Position opening ranges and board-texture bet sizing",
+      "queue": "adapted_for_research_intake",
+      "license": {
+        "expression": "MIT",
+        "copyright": "2026 dev.fun",
+        "scope": "Repository code.",
+        "copy_status": "clear_with_notice"
+      },
+      "source_bytes": 6727,
+      "runtime": {
+        "imports": [
+          "typing"
+        ],
+        "assets": "None",
+        "source_budget_seconds": null,
+        "imperial_fit": "Low effort stdlib policy. Remove deadline_s < 2 guard, map button-relative 7/8-seat position, and adapt legal action/amount semantics."
+      },
+      "performance": {
+        "claim": "Reference implementation; no independently verified result for this policy.",
+        "evidence": "README and complete policy.",
+        "caveat": "General README leaderboard/learning claims do not establish this policy's performance."
+      },
+      "limitations": [
+        "Fixed seat-number-to-position map.",
+        "Unraised preflop opening branch requires call_chips == 0, which mishandles ordinary blind-facing opens.",
+        "Postflop value signal is only whether a hole-card rank pairs the board; overpairs, straights and flushes may be missed.",
+        "Passing a 10ms deadline to the original function triggers automatic check/fold."
+      ],
+      "evidence_review": "README, MIT notice and complete textured policy inspected.",
+      "repository_url": "https://github.com/devfun-org/poker-arena-starter-kit",
+      "sources": {
+        "readme": "https://github.com/devfun-org/poker-arena-starter-kit/blob/fc19bb25e9c6e8fabc26099d6a767241fc99fc2f/README.md",
+        "license": "https://github.com/devfun-org/poker-arena-starter-kit/blob/fc19bb25e9c6e8fabc26099d6a767241fc99fc2f/LICENSE",
+        "policy": "https://github.com/devfun-org/poker-arena-starter-kit/blob/fc19bb25e9c6e8fabc26099d6a767241fc99fc2f/assets/decide_textured.py"
+      },
+      "acceptance_status": "Standalone adapter reviewed; actual Python 3.12.10 Windows tests executed. Timing reports include failures; see manifest validation_history. Sealed platform and competitive strength remain pending.",
+      "local_adapter": {
+        "entry_file": "candidates/imported/devfun_textured.py",
+        "sha256": "88af4ca6c6962c6590a2beed68a4df5ca6143d95aa2131bec16ea3f762208b74",
+        "bytes": 11098,
+        "manifest": "research/manifest.json"
+      }
+    },
+    {
+      "id": "advit_deep_cfr",
+      "category": "candidate_and_framework_exclusion",
+      "priority": 6,
+      "repository": "advitrocks9/fullhouse-bot",
+      "revision": "e504793d480b1b975f25258d25939b45c6dbd5a4",
+      "variant": "Six-player no-limit Hold'em; Fullhouse 2s decision sandbox",
+      "family": "Deep CFR inference with short-stack push/fold exception",
+      "queue": "blocked",
+      "license": {
+        "expression": "MIT for explicitly named authored code",
+        "copyright": "2026 Advit Arora",
+        "scope": "Grant explicitly lists bot/, training/, tooling/, scripts/, tests/, docs/. engine_vendored/ excluded. bots/ and data/ are not listed.",
+        "copy_status": "code_scope_clear_assets_unresolved"
+      },
+      "source_bytes": 9764,
+      "runtime": {
+        "imports": [
+          "numpy",
+          "eval7"
+        ],
+        "assets": "Committed model data/deep_cfr_model.npz: 590,758 bytes; also preflop_equity.npz.",
+        "source_budget_seconds": 2,
+        "imperial_fit": "Checkpoint alone exceeds 200KB cap; stdlib inference/evaluation and 7/8-player retraining or strategy transfer would be substantial."
+      },
+      "performance": {
+        "claim": "12th of 500+ qualifier entrants; 15th of 64 finalists; local v17 +22.41 bb/100 standard pool and +19.89 held-out.",
+        "evidence": "Author README and repository leaderboard image; official independent result not verified.",
+        "caveat": "Local pool scores are not leaderboard results. Repository image is not independent verification."
+      },
+      "limitations": [
+        "Six-position tuple may index out of bounds at 7/8 players.",
+        "Model and opponent-pool reuse permission not cleared by the enumerated license scope.",
+        "Not a candidate for immediate single-file stdlib port."
+      ],
+      "evidence_review": "README, LICENSE, full runtime/inference, feature requirements and file metadata inspected by both researchers.",
+      "repository_url": "https://github.com/advitrocks9/fullhouse-bot",
+      "sources": {
+        "readme": "https://github.com/advitrocks9/fullhouse-bot/blob/e504793d480b1b975f25258d25939b45c6dbd5a4/README.md",
+        "license": "https://github.com/advitrocks9/fullhouse-bot/blob/e504793d480b1b975f25258d25939b45c6dbd5a4/LICENSE",
+        "policy": "https://github.com/advitrocks9/fullhouse-bot/blob/e504793d480b1b975f25258d25939b45c6dbd5a4/bot/bot.py",
+        "inference": "https://github.com/advitrocks9/fullhouse-bot/blob/e504793d480b1b975f25258d25939b45c6dbd5a4/bot/deep_cfr_lookup.py",
+        "features": "https://github.com/advitrocks9/fullhouse-bot/blob/e504793d480b1b975f25258d25939b45c6dbd5a4/bot/features.py",
+        "opponent_pool": "https://github.com/advitrocks9/fullhouse-bot/blob/e504793d480b1b975f25258d25939b45c6dbd5a4/bots/README.md",
+        "checkpoint": "https://github.com/advitrocks9/fullhouse-bot/blob/e504793d480b1b975f25258d25939b45c6dbd5a4/data/deep_cfr_model.npz"
+      },
+      "acceptance_status": "Not established by this source review; consult local execution and validation reports."
+    },
+    {
+      "id": "pokerrl",
+      "category": "framework_exclusion",
+      "repository": "EricSteinberger/PokerRL",
+      "revision": "e02ea667061b96912e424231da071b6f20a262f7",
+      "variant": "Research framework supporting several poker games; not a ready submitted Imperial agent",
+      "family": "Poker RL training/evaluation infrastructure",
+      "queue": "excluded_from_initial_port_batch",
+      "license": {
+        "expression": "MIT",
+        "scope": "Repository code.",
+        "copy_status": "clear_with_notice"
+      },
+      "runtime": {
+        "imports": [
+          "PyTorch",
+          "compiled C++ components"
+        ],
+        "assets": "No ready transferable 7/8-player NLHE policy established by source review.",
+        "imperial_fit": "Documented legacy Python 3.6/PyTorch 0.4.1 stack and compiled components conflict with stdlib single-file target."
+      },
+      "performance": {
+        "claim": "Research framework, not a competition-ranked bot.",
+        "evidence": "README and abstract evaluation-agent source.",
+        "caveat": "Framework reputation is not policy strength."
+      },
+      "evidence_review": "Primary files and pin inspected by research_bot_frameworks.",
+      "repository_url": "https://github.com/EricSteinberger/PokerRL",
+      "sources": {
+        "readme": "https://github.com/EricSteinberger/PokerRL/blob/e02ea667061b96912e424231da071b6f20a262f7/README.md",
+        "license": "https://github.com/EricSteinberger/PokerRL/blob/e02ea667061b96912e424231da071b6f20a262f7/LICENSE",
+        "agent_interface": "https://github.com/EricSteinberger/PokerRL/blob/e02ea667061b96912e424231da071b6f20a262f7/PokerRL/rl/base_cls/EvalAgentBase.py"
+      },
+      "acceptance_status": "Not established by this source review; consult local execution and validation reports."
+    },
+    {
+      "id": "deep_cfr",
+      "category": "framework_exclusion",
+      "repository": "EricSteinberger/Deep-CFR",
+      "revision": "2e664ebbe5bf3c8f8ab56057205cbe4c2c7baeb5",
+      "variant": "Deep CFR/SD-CFR research implementation; committed FHP examples are not 7/8-player NLHE",
+      "family": "Learned regret/strategy networks",
+      "queue": "excluded_from_initial_port_batch",
+      "license": {
+        "expression": "MIT",
+        "scope": "Repository code; retain license notice.",
+        "copy_status": "clear_with_notice"
+      },
+      "runtime": {
+        "imports": [
+          "numpy",
+          "PokerRL",
+          "PyTorch"
+        ],
+        "assets": "Weights exist: Example_FHP_AVRG_NET.pkl 869,414 bytes; Example_FHP_SINGLE.pkl 81,188,437 bytes.",
+        "imperial_fit": "Both example artifacts exceed 200KB; wrong target game and deep framework/runtime dependencies."
+      },
+      "performance": {
+        "claim": "Research implementation and example checkpoints, not a verified Imperial-ready entrant.",
+        "evidence": "README, evaluation agent and checkpoint tree metadata.",
+        "caveat": "Do not report weights as missing."
+      },
+      "evidence_review": "Primary files, checkpoint sizes and pin inspected by research_bot_frameworks.",
+      "repository_url": "https://github.com/EricSteinberger/Deep-CFR",
+      "sources": {
+        "readme": "https://github.com/EricSteinberger/Deep-CFR/blob/2e664ebbe5bf3c8f8ab56057205cbe4c2c7baeb5/README.md",
+        "license": "https://github.com/EricSteinberger/Deep-CFR/blob/2e664ebbe5bf3c8f8ab56057205cbe4c2c7baeb5/LICENSE",
+        "agent": "https://github.com/EricSteinberger/Deep-CFR/blob/2e664ebbe5bf3c8f8ab56057205cbe4c2c7baeb5/DeepCFR/EvalAgentDeepCFR.py",
+        "average_checkpoint": "https://github.com/EricSteinberger/Deep-CFR/blob/2e664ebbe5bf3c8f8ab56057205cbe4c2c7baeb5/trained_agents/Example_FHP_AVRG_NET.pkl",
+        "single_checkpoint": "https://github.com/EricSteinberger/Deep-CFR/blob/2e664ebbe5bf3c8f8ab56057205cbe4c2c7baeb5/trained_agents/Example_FHP_SINGLE.pkl"
+      },
+      "acceptance_status": "Not established by this source review; consult local execution and validation reports."
+    },
+    {
+      "id": "fedden_poker_ai",
+      "category": "framework_exclusion",
+      "repository": "fedden/poker_ai",
+      "revision": "73fb394b26623c897459ffa3e66d7a5cb47e9962",
+      "variant": "README describes a 20-card simplified poker implementation; not full-deck 7/8-player target",
+      "family": "Pluribus-inspired research implementation",
+      "queue": "excluded_from_initial_port_batch",
+      "license": {
+        "expression": "GPL-3.0",
+        "scope": "Actual LICENSE is GPLv3 despite API NOASSERTION metadata.",
+        "copy_status": "not_selected_under_current_permissive_intake"
+      },
+      "runtime": {
+        "imports": [
+          "scipy",
+          "scikit-learn",
+          "numpy",
+          "dill"
+        ],
+        "assets": "Archived research project; no suitable target checkpoint established.",
+        "imperial_fit": "Different game abstraction and extensive non-stdlib dependencies."
+      },
+      "performance": {
+        "claim": "Pluribus-inspired implementation, not the released original Pluribus agent.",
+        "evidence": "README and license.",
+        "caveat": "Do not transfer original Pluribus performance claims to this repository."
+      },
+      "evidence_review": "Primary files and pin inspected by research_bot_frameworks.",
+      "repository_url": "https://github.com/fedden/poker_ai",
+      "sources": {
+        "readme": "https://github.com/fedden/poker_ai/blob/73fb394b26623c897459ffa3e66d7a5cb47e9962/README.md",
+        "license": "https://github.com/fedden/poker_ai/blob/73fb394b26623c897459ffa3e66d7a5cb47e9962/LICENSE",
+        "dependencies": "https://github.com/fedden/poker_ai/blob/73fb394b26623c897459ffa3e66d7a5cb47e9962/requirements.txt"
+      },
+      "acceptance_status": "Not established by this source review; consult local execution and validation reports."
+    },
+    {
+      "id": "rlcard",
+      "category": "framework_exclusion",
+      "repository": "datamllab/rlcard",
+      "revision": "d7d0a957baf4cc7225a50522adb0164bf130a9d0",
+      "variant": "Card-game framework including distinct limit, no-limit and Leduc environments",
+      "family": "RL environments and model registry",
+      "queue": "excluded_from_initial_port_batch",
+      "license": {
+        "expression": "MIT",
+        "scope": "Repository code.",
+        "copy_status": "clear_with_notice"
+      },
+      "runtime": {
+        "assets": "Registry has no ready pretrained NLHE agent. Leduc checkpoint and limit rule model are different games.",
+        "imperial_fit": "Environment availability does not supply a transferable 7/8-player NLHE policy."
+      },
+      "performance": {
+        "claim": "Framework, not a tournament-ranked NLHE bot.",
+        "evidence": "README, model registry and limit rule policy.",
+        "caveat": "A 6,315-byte limit rule model could become a weak control only after explicit strategy adaptation."
+      },
+      "evidence_review": "Primary files, registry and pin inspected by research_bot_frameworks.",
+      "repository_url": "https://github.com/datamllab/rlcard",
+      "sources": {
+        "readme": "https://github.com/datamllab/rlcard/blob/d7d0a957baf4cc7225a50522adb0164bf130a9d0/README.md",
+        "license": "https://github.com/datamllab/rlcard/blob/d7d0a957baf4cc7225a50522adb0164bf130a9d0/LICENSE",
+        "registry": "https://github.com/datamllab/rlcard/blob/d7d0a957baf4cc7225a50522adb0164bf130a9d0/rlcard/models/__init__.py",
+        "limit_rule_agent": "https://github.com/datamllab/rlcard/blob/d7d0a957baf4cc7225a50522adb0164bf130a9d0/rlcard/models/limitholdem_rule_models.py"
+      },
+      "acceptance_status": "Not established by this source review; consult local execution and validation reports."
+    },
+    {
+      "id": "noregrets",
+      "category": "framework_exclusion",
+      "repository": "conorarmstrong/noregrets",
+      "revision": "757f7692738069522195d2b486eec60a8b010c0c",
+      "variant": "Rust Pluribus-style 2\u20136-player no-limit Hold'em",
+      "family": "Blueprint training and real-time resolving",
+      "queue": "excluded_from_initial_port_batch",
+      "license": {
+        "expression": "MIT source code",
+        "scope": "README states trained artifacts were never public and commercial artifacts are separate.",
+        "copy_status": "source_clear_no_public_checkpoint"
+      },
+      "runtime": {
+        "imports": [
+          "Rust runtime"
+        ],
+        "assets": "No public trained artifacts per README.",
+        "source_budget_seconds": 2,
+        "imperial_fit": "Rust rewrite, missing trained policy, 2\u20136-player target and approximately 2000ms default resolving budget."
+      },
+      "performance": {
+        "claim": "Pluribus-style implementation, not original Pluribus.",
+        "evidence": "README and license.",
+        "caveat": "Source availability does not imply a complete ready-to-run trained agent."
+      },
+      "evidence_review": "Primary files and pin inspected by research_bot_frameworks.",
+      "repository_url": "https://github.com/conorarmstrong/noregrets",
+      "sources": {
+        "readme": "https://github.com/conorarmstrong/noregrets/blob/757f7692738069522195d2b486eec60a8b010c0c/README.md",
+        "license": "https://github.com/conorarmstrong/noregrets/blob/757f7692738069522195d2b486eec60a8b010c0c/LICENSE"
+      },
+      "acceptance_status": "Not established by this source review; consult local execution and validation reports."
+    }
+  ],
+  "next_queue": [
+    "Evaluate the five existing adapters using exact manifest hashes; investigate and retain timing failures.",
+    "Claude independently discovers net-new complete public policies under research/claude/; see CLAUDE_HANDOVER.md.",
+    "D proposed tooling is PR #4; confirm its merge/status before integration. Colin evaluates Owen's native candidate.",
+    "Keep heavyweight exclusions out of immediate ports; no winner selected and C remains later."
+  ]
+}

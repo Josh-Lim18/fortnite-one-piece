@@ -1,0 +1,881 @@
+{
+  "schema_version": 2,
+  "batch": "B-five-ports-2026-11-14",
+  "base_revision": "bec6ca67f9076d6aa580de12ac2bf3f342cf9f8d",
+  "candidates": [
+    {
+      "candidate_id": "fullhouse_floorfix_imperial_v1",
+      "entry_file": "candidates/imported/fullhouse_floorfix.py",
+      "sha256": "8d41454d6cafc10225ee474f807b9612dea8a73bd849dbf2ffd0d63a7c66c516",
+      "bytes": 34881,
+      "imports": [
+        "random",
+        "time"
+      ],
+      "source_repository": "txnujk09/fullhouse-poker-bot",
+      "source_revision": "4fe154318949aa60430682416f148733c6f0d564",
+      "source_evidence": "research/SOURCES.json#fullhouse_floorfix",
+      "license": "MIT",
+      "preserved_source": "research/sources/fullhouse_floorfix.py",
+      "source_sha256": "4cc3f54eb70d487d23e88241c5e2f096a40127c0f190db6e70a2e3dff62a9a56",
+      "license_file": "research/sources/FLOORFIX_LICENSE.txt",
+      "adaptation_notes": "research/floorfix_notes.md",
+      "status": "reviewed_intake_candidate_platform_and_strength_pending",
+      "reliability": {
+        "local_runtime": "3.12.10",
+        "platform": "Windows",
+        "hands_per_table": 1000,
+        "table_sizes": [
+          7,
+          8
+        ],
+        "interpretation": "Observed results for these two matching-file reports only; not a reliability guarantee or platform approval.",
+        "observed_timeouts": 1,
+        "observed_errors": 0,
+        "observed_invalid_actions": 0,
+        "observed_bank_out": 0,
+        "worst_round_think_ms": 569.665,
+        "reports": [
+          "research/runs/python312-8-1501-final.json",
+          "research/runs/python312-7-1502-final.json"
+        ]
+      },
+      "unverified": [
+        "Sealed organizer platform",
+        "Repeated timeout-free operation",
+        "Robust competitive strength",
+        "Final submission readiness"
+      ],
+      "validation_history": [
+        {
+          "report": "research/runs/smoke-7-1404.json",
+          "python": "3.14.6",
+          "players": 7,
+          "hands": 1000,
+          "candidate_sha256": "8d41454d6cafc10225ee474f807b9612dea8a73bd849dbf2ffd0d63a7c66c516",
+          "matches_current_file": true,
+          "stage": "earlier_three_candidate_batch",
+          "timeouts": 0,
+          "errors": 0,
+          "invalid_actions": 0,
+          "bank_out": 0,
+          "total_think_ms": 650.069,
+          "report_all_candidate_gate_pass": true
+        },
+        {
+          "report": "research/runs/smoke-8-1403.json",
+          "python": "3.14.6",
+          "players": 8,
+          "hands": 1000,
+          "candidate_sha256": "8d41454d6cafc10225ee474f807b9612dea8a73bd849dbf2ffd0d63a7c66c516",
+          "matches_current_file": true,
+          "stage": "earlier_three_candidate_batch",
+          "timeouts": 0,
+          "errors": 0,
+          "invalid_actions": 0,
+          "bank_out": 0,
+          "total_think_ms": 661.824,
+          "report_all_candidate_gate_pass": true
+        },
+        {
+          "report": "research/runs/python312-8-1501.json",
+          "python": "3.12.10",
+          "players": 8,
+          "hands": 1000,
+          "candidate_sha256": "8d41454d6cafc10225ee474f807b9612dea8a73bd849dbf2ffd0d63a7c66c516",
+          "matches_current_file": true,
+          "stage": "pre_cleanup_batch",
+          "timeouts": 0,
+          "errors": 0,
+          "invalid_actions": 0,
+          "bank_out": 0,
+          "total_think_ms": 728.472,
+          "report_all_candidate_gate_pass": false
+        },
+        {
+          "report": "research/runs/python312-8-1501-final.json",
+          "python": "3.12.10",
+          "players": 8,
+          "hands": 1000,
+          "candidate_sha256": "8d41454d6cafc10225ee474f807b9612dea8a73bd849dbf2ffd0d63a7c66c516",
+          "matches_current_file": true,
+          "stage": "final_files",
+          "timeouts": 1,
+          "errors": 0,
+          "invalid_actions": 0,
+          "bank_out": 0,
+          "total_think_ms": 424.296,
+          "report_all_candidate_gate_pass": false
+        },
+        {
+          "report": "research/runs/python312-7-1502-final.json",
+          "python": "3.12.10",
+          "players": 7,
+          "hands": 1000,
+          "candidate_sha256": "8d41454d6cafc10225ee474f807b9612dea8a73bd849dbf2ffd0d63a7c66c516",
+          "matches_current_file": true,
+          "stage": "final_files",
+          "timeouts": 0,
+          "errors": 0,
+          "invalid_actions": 0,
+          "bank_out": 0,
+          "total_think_ms": 569.665,
+          "report_all_candidate_gate_pass": true
+        }
+      ]
+    },
+    {
+      "candidate_id": "fullhouse_shark_imperial_v1",
+      "entry_file": "candidates/imported/fullhouse_shark.py",
+      "sha256": "2d9aed30b745d398e27ab8ac5049781c1530fab1392623d8a7189d0598b69fb3",
+      "bytes": 3684,
+      "imports": [
+        "random"
+      ],
+      "source_repository": "mbatv/fullhouse-engine",
+      "source_revision": "a80b26957db5f5515d9273a15d1b73aadf8985db",
+      "source_evidence": "research/SOURCES.json#fullhouse_shark",
+      "license": "MIT",
+      "preserved_source": "research/sources/fullhouse_shark.py",
+      "source_sha256": "8bbdb25b3f3d54ae47e38eabfe169ec1f7b5743becbc14cd69cc57e3969e98ba",
+      "license_file": "research/sources/FULLHOUSE_LICENSE.txt",
+      "adaptation_notes": "research/shark_notes.md",
+      "status": "reviewed_intake_candidate_platform_and_strength_pending",
+      "reliability": {
+        "local_runtime": "3.12.10",
+        "platform": "Windows",
+        "hands_per_table": 1000,
+        "table_sizes": [
+          7,
+          8
+        ],
+        "interpretation": "Observed results for these two matching-file reports only; not a reliability guarantee or platform approval.",
+        "observed_timeouts": 0,
+        "observed_errors": 0,
+        "observed_invalid_actions": 0,
+        "observed_bank_out": 0,
+        "worst_round_think_ms": 141.847,
+        "reports": [
+          "research/runs/python312-8-1501-final.json",
+          "research/runs/python312-7-1502-final.json"
+        ]
+      },
+      "unverified": [
+        "Sealed organizer platform",
+        "Repeated timeout-free operation",
+        "Robust competitive strength",
+        "Final submission readiness"
+      ],
+      "validation_history": [
+        {
+          "report": "research/runs/smoke-7-1404.json",
+          "python": "3.14.6",
+          "players": 7,
+          "hands": 1000,
+          "candidate_sha256": "2d9aed30b745d398e27ab8ac5049781c1530fab1392623d8a7189d0598b69fb3",
+          "matches_current_file": true,
+          "stage": "earlier_three_candidate_batch",
+          "timeouts": 0,
+          "errors": 0,
+          "invalid_actions": 0,
+          "bank_out": 0,
+          "total_think_ms": 200.956,
+          "report_all_candidate_gate_pass": true
+        },
+        {
+          "report": "research/runs/smoke-8-1403.json",
+          "python": "3.14.6",
+          "players": 8,
+          "hands": 1000,
+          "candidate_sha256": "2d9aed30b745d398e27ab8ac5049781c1530fab1392623d8a7189d0598b69fb3",
+          "matches_current_file": true,
+          "stage": "earlier_three_candidate_batch",
+          "timeouts": 0,
+          "errors": 0,
+          "invalid_actions": 0,
+          "bank_out": 0,
+          "total_think_ms": 208.158,
+          "report_all_candidate_gate_pass": true
+        },
+        {
+          "report": "research/runs/python312-8-1501.json",
+          "python": "3.12.10",
+          "players": 8,
+          "hands": 1000,
+          "candidate_sha256": "2d9aed30b745d398e27ab8ac5049781c1530fab1392623d8a7189d0598b69fb3",
+          "matches_current_file": true,
+          "stage": "pre_cleanup_batch",
+          "timeouts": 0,
+          "errors": 0,
+          "invalid_actions": 0,
+          "bank_out": 0,
+          "total_think_ms": 237.27,
+          "report_all_candidate_gate_pass": false
+        },
+        {
+          "report": "research/runs/python312-8-1501-final.json",
+          "python": "3.12.10",
+          "players": 8,
+          "hands": 1000,
+          "candidate_sha256": "2d9aed30b745d398e27ab8ac5049781c1530fab1392623d8a7189d0598b69fb3",
+          "matches_current_file": true,
+          "stage": "final_files",
+          "timeouts": 0,
+          "errors": 0,
+          "invalid_actions": 0,
+          "bank_out": 0,
+          "total_think_ms": 127.852,
+          "report_all_candidate_gate_pass": false
+        },
+        {
+          "report": "research/runs/python312-7-1502-final.json",
+          "python": "3.12.10",
+          "players": 7,
+          "hands": 1000,
+          "candidate_sha256": "2d9aed30b745d398e27ab8ac5049781c1530fab1392623d8a7189d0598b69fb3",
+          "matches_current_file": true,
+          "stage": "final_files",
+          "timeouts": 0,
+          "errors": 0,
+          "invalid_actions": 0,
+          "bank_out": 0,
+          "total_think_ms": 141.847,
+          "report_all_candidate_gate_pass": true
+        }
+      ]
+    },
+    {
+      "candidate_id": "vivelev_monte_carlo_imperial_v1",
+      "entry_file": "candidates/imported/vivelev_monte_carlo.py",
+      "sha256": "dc79942d2be13a3d6bb10cc4824ca15f61f1ae473da6d758372b5b04cd00a8d3",
+      "bytes": 6260,
+      "imports": [
+        "random",
+        "time"
+      ],
+      "source_repository": "VIVelev/PokerBot-AI",
+      "source_revision": "c1be1110b258fef0dedda91c28e8c2634b9e778c",
+      "source_evidence": "research/SOURCES.json#vivelev_monte_carlo",
+      "license": "MIT",
+      "preserved_source": "research/sources/vivelev_monte_carlo_upstream.py",
+      "source_sha256": "c2f71efb35f733004dad286120a3bf0be8a4491d27ca125ef356f6d095c7495d",
+      "license_file": "research/sources/vivelev_LICENSE.txt",
+      "adaptation_notes": "research/vivelev_notes.md",
+      "status": "reviewed_intake_candidate_platform_and_strength_pending",
+      "reliability": {
+        "local_runtime": "3.12.10",
+        "platform": "Windows",
+        "hands_per_table": 1000,
+        "table_sizes": [
+          7,
+          8
+        ],
+        "interpretation": "Observed results for these two matching-file reports only; not a reliability guarantee or platform approval.",
+        "observed_timeouts": 0,
+        "observed_errors": 0,
+        "observed_invalid_actions": 0,
+        "observed_bank_out": 0,
+        "worst_round_think_ms": 533.692,
+        "reports": [
+          "research/runs/python312-8-1501-final.json",
+          "research/runs/python312-7-1502-final.json"
+        ]
+      },
+      "unverified": [
+        "Sealed organizer platform",
+        "Repeated timeout-free operation",
+        "Robust competitive strength",
+        "Final submission readiness"
+      ],
+      "validation_history": [
+        {
+          "report": "research/runs/smoke-7-1404.json",
+          "python": "3.14.6",
+          "players": 7,
+          "hands": 1000,
+          "candidate_sha256": "dc79942d2be13a3d6bb10cc4824ca15f61f1ae473da6d758372b5b04cd00a8d3",
+          "matches_current_file": true,
+          "stage": "earlier_three_candidate_batch",
+          "timeouts": 0,
+          "errors": 0,
+          "invalid_actions": 0,
+          "bank_out": 0,
+          "total_think_ms": 684.852,
+          "report_all_candidate_gate_pass": true
+        },
+        {
+          "report": "research/runs/smoke-8-1403.json",
+          "python": "3.14.6",
+          "players": 8,
+          "hands": 1000,
+          "candidate_sha256": "dc79942d2be13a3d6bb10cc4824ca15f61f1ae473da6d758372b5b04cd00a8d3",
+          "matches_current_file": true,
+          "stage": "earlier_three_candidate_batch",
+          "timeouts": 0,
+          "errors": 0,
+          "invalid_actions": 0,
+          "bank_out": 0,
+          "total_think_ms": 715.481,
+          "report_all_candidate_gate_pass": true
+        },
+        {
+          "report": "research/runs/python312-8-1501.json",
+          "python": "3.12.10",
+          "players": 8,
+          "hands": 1000,
+          "candidate_sha256": "dc79942d2be13a3d6bb10cc4824ca15f61f1ae473da6d758372b5b04cd00a8d3",
+          "matches_current_file": true,
+          "stage": "pre_cleanup_batch",
+          "timeouts": 1,
+          "errors": 0,
+          "invalid_actions": 0,
+          "bank_out": 0,
+          "total_think_ms": 823.608,
+          "report_all_candidate_gate_pass": false
+        },
+        {
+          "report": "research/runs/python312-8-1501-final.json",
+          "python": "3.12.10",
+          "players": 8,
+          "hands": 1000,
+          "candidate_sha256": "dc79942d2be13a3d6bb10cc4824ca15f61f1ae473da6d758372b5b04cd00a8d3",
+          "matches_current_file": true,
+          "stage": "final_files",
+          "timeouts": 0,
+          "errors": 0,
+          "invalid_actions": 0,
+          "bank_out": 0,
+          "total_think_ms": 520.386,
+          "report_all_candidate_gate_pass": false
+        },
+        {
+          "report": "research/runs/python312-7-1502-final.json",
+          "python": "3.12.10",
+          "players": 7,
+          "hands": 1000,
+          "candidate_sha256": "dc79942d2be13a3d6bb10cc4824ca15f61f1ae473da6d758372b5b04cd00a8d3",
+          "matches_current_file": true,
+          "stage": "final_files",
+          "timeouts": 0,
+          "errors": 0,
+          "invalid_actions": 0,
+          "bank_out": 0,
+          "total_think_ms": 533.692,
+          "report_all_candidate_gate_pass": true
+        }
+      ]
+    },
+    {
+      "candidate_id": "nucats_starter_imperial_v1",
+      "entry_file": "candidates/imported/nucats_starter.py",
+      "sha256": "bd01e82f89ccb408523e96e6e9940c06b16202b71882091c6bd7346c9b09a298",
+      "bytes": 5682,
+      "imports": [
+        "collections"
+      ],
+      "source_repository": "nucats-soc/NUCATS-Pokerbot",
+      "source_revision": "67cadea4486039ef279c6e4718e3b90d58134939",
+      "source_evidence": "research/SOURCES.json#nucats_starter",
+      "license": "MIT",
+      "preserved_source": "research/sources/nucats_bot_upstream.py",
+      "source_sha256": "56f4efc08523bbcc7059993e9a8bb994b52166bfe7938cd7738f5032ecc0e159",
+      "license_file": "research/sources/nucats_LICENSE.txt",
+      "adaptation_notes": "research/nucats_notes.md",
+      "status": "reviewed_intake_candidate_platform_and_strength_pending",
+      "validation_history": [
+        {
+          "report": "research/runs/python312-8-1501.json",
+          "python": "3.12.10",
+          "players": 8,
+          "hands": 1000,
+          "candidate_sha256": "9d23681daf0f0a3aa9af85ce7d375edcc2641f5a926ac4c738f4bff9e096df37",
+          "matches_current_file": false,
+          "stage": "pre_cleanup_batch",
+          "timeouts": 0,
+          "errors": 0,
+          "invalid_actions": 0,
+          "bank_out": 0,
+          "total_think_ms": 518.017,
+          "report_all_candidate_gate_pass": false
+        },
+        {
+          "report": "research/runs/python312-8-1501-final.json",
+          "python": "3.12.10",
+          "players": 8,
+          "hands": 1000,
+          "candidate_sha256": "bd01e82f89ccb408523e96e6e9940c06b16202b71882091c6bd7346c9b09a298",
+          "matches_current_file": true,
+          "stage": "final_files",
+          "timeouts": 0,
+          "errors": 0,
+          "invalid_actions": 0,
+          "bank_out": 0,
+          "total_think_ms": 297.542,
+          "report_all_candidate_gate_pass": false
+        },
+        {
+          "report": "research/runs/python312-7-1502-final.json",
+          "python": "3.12.10",
+          "players": 7,
+          "hands": 1000,
+          "candidate_sha256": "bd01e82f89ccb408523e96e6e9940c06b16202b71882091c6bd7346c9b09a298",
+          "matches_current_file": true,
+          "stage": "final_files",
+          "timeouts": 0,
+          "errors": 0,
+          "invalid_actions": 0,
+          "bank_out": 0,
+          "total_think_ms": 280.999,
+          "report_all_candidate_gate_pass": true
+        }
+      ],
+      "reliability": {
+        "local_runtime": "3.12.10",
+        "platform": "Windows",
+        "hands_per_table": 1000,
+        "table_sizes": [
+          7,
+          8
+        ],
+        "interpretation": "Observed results for these two matching-file reports only; not a reliability guarantee or platform approval.",
+        "observed_timeouts": 0,
+        "observed_errors": 0,
+        "observed_invalid_actions": 0,
+        "observed_bank_out": 0,
+        "worst_round_think_ms": 297.542,
+        "reports": [
+          "research/runs/python312-8-1501-final.json",
+          "research/runs/python312-7-1502-final.json"
+        ]
+      },
+      "unverified": [
+        "Sealed organizer platform",
+        "Repeated timeout-free operation",
+        "Robust competitive strength",
+        "Final submission readiness"
+      ]
+    },
+    {
+      "candidate_id": "devfun_textured_imperial_v1",
+      "entry_file": "candidates/imported/devfun_textured.py",
+      "sha256": "88af4ca6c6962c6590a2beed68a4df5ca6143d95aa2131bec16ea3f762208b74",
+      "bytes": 11098,
+      "imports": [
+        "typing"
+      ],
+      "source_repository": "devfun-org/poker-arena-starter-kit",
+      "source_revision": "fc19bb25e9c6e8fabc26099d6a767241fc99fc2f",
+      "source_evidence": "research/SOURCES.json#devfun_textured",
+      "license": "MIT",
+      "preserved_source": "research/sources/textured_upstream.py",
+      "source_sha256": "7e4e5e98bdc1787d93c2982aad8a6640050331e55c7b6b8e040da953da0a9739",
+      "license_file": "research/sources/textured_LICENSE.txt",
+      "adaptation_notes": "research/textured_notes.md",
+      "status": "reviewed_intake_candidate_platform_and_strength_pending",
+      "validation_history": [
+        {
+          "report": "research/runs/python312-8-1501.json",
+          "python": "3.12.10",
+          "players": 8,
+          "hands": 1000,
+          "candidate_sha256": "4f244745c2fa2f6731a55e7565e5bb9d0cc26acd625bf19f7cd0fcecd4bf3dae",
+          "matches_current_file": false,
+          "stage": "pre_cleanup_batch",
+          "timeouts": 1,
+          "errors": 0,
+          "invalid_actions": 0,
+          "bank_out": 0,
+          "total_think_ms": 295.572,
+          "report_all_candidate_gate_pass": false
+        },
+        {
+          "report": "research/runs/python312-8-1501-final.json",
+          "python": "3.12.10",
+          "players": 8,
+          "hands": 1000,
+          "candidate_sha256": "88af4ca6c6962c6590a2beed68a4df5ca6143d95aa2131bec16ea3f762208b74",
+          "matches_current_file": true,
+          "stage": "final_files",
+          "timeouts": 0,
+          "errors": 0,
+          "invalid_actions": 0,
+          "bank_out": 0,
+          "total_think_ms": 157.145,
+          "report_all_candidate_gate_pass": false
+        },
+        {
+          "report": "research/runs/python312-7-1502-final.json",
+          "python": "3.12.10",
+          "players": 7,
+          "hands": 1000,
+          "candidate_sha256": "88af4ca6c6962c6590a2beed68a4df5ca6143d95aa2131bec16ea3f762208b74",
+          "matches_current_file": true,
+          "stage": "final_files",
+          "timeouts": 0,
+          "errors": 0,
+          "invalid_actions": 0,
+          "bank_out": 0,
+          "total_think_ms": 180.07,
+          "report_all_candidate_gate_pass": true
+        }
+      ],
+      "reliability": {
+        "local_runtime": "3.12.10",
+        "platform": "Windows",
+        "hands_per_table": 1000,
+        "table_sizes": [
+          7,
+          8
+        ],
+        "interpretation": "Observed results for these two matching-file reports only; not a reliability guarantee or platform approval.",
+        "observed_timeouts": 0,
+        "observed_errors": 0,
+        "observed_invalid_actions": 0,
+        "observed_bank_out": 0,
+        "worst_round_think_ms": 180.07,
+        "reports": [
+          "research/runs/python312-8-1501-final.json",
+          "research/runs/python312-7-1502-final.json"
+        ]
+      },
+      "unverified": [
+        "Sealed organizer platform",
+        "Repeated timeout-free operation",
+        "Robust competitive strength",
+        "Final submission readiness"
+      ]
+    }
+  ],
+  "tests": "research/runs/unit-tests-python312-final.txt",
+  "winner_selected": false,
+  "reviews": [
+    "research/REVIEW_B.md",
+    "research/REVIEW_B_EXPANSION.md"
+  ],
+  "test_result": {
+    "count": 48,
+    "passed": 48,
+    "python": "3.12.10",
+    "platform": "Windows",
+    "elapsed_seconds": 0.752
+  },
+  "local_target_python_runtime_verified": true,
+  "sealed_platform_verified": false,
+  "current_reports_all_candidate_gates_pass": false,
+  "evidence_notes": [
+    "All five current files match both *-final Python 3.12 reports.",
+    "Initial Python 3.12 eight-seat report uses pre-cleanup NUCATS/Textured bytes; other three match current files.",
+    "Initial eight-seat report: VIVelev 1 timeout, Textured 1 timeout.",
+    "Final eight-seat report: Floorfix 1 timeout; other four 0.",
+    "Final seven-seat report: all five candidates 0 timeouts; house calling-station bot timed out twice.",
+    "All candidates in those three reports had 0 errors, invalid actions and bank exhaustion. Failures are retained; their cause is not established.",
+    "Earlier Python 3.14 reports concern the initial three-candidate batch and remain historical evidence, not current batch acceptance."
+  ],
+  "evaluation_handoff": {
+    "pull_request": "https://github.com/Josh-Lim18/fortnite-one-piece/pull/4",
+    "status": "Proposed D tooling; not asserted merged",
+    "contents": "tests/check_submission.py, evaluation/ paired-seed runner, verdicts and six benchmark opponents; unchanged kit/ or --kit path.",
+    "review_separation": "Colin evaluates Owen's native poker/bot candidate; Owen does not evaluate his own candidate.",
+    "inspected_revision": "033851cf22f086267c5ac6defce46a14748d5528",
+    "gate_settings": {
+      "max_timeout_rate": 0.01,
+      "bank_threshold_seconds": 5,
+      "max_errors": 0
+    },
+    "gate_results_verified": true,
+    "distinction": "Our smoke helper fails on any candidate timeout; D gate has different acceptance thresholds.",
+    "gate_results_scope": "Our five pinned B candidates only, in d_gate_integration; Owen's own candidate results remain unverified."
+  },
+  "d_gate_integration": {
+    "report": "research/runs/d-pr4-gate-python312.json",
+    "report_sha256": "f65d38b8fbc414fdc2b04b342f63bad48acbd70a2a630d417103b80a28ec1553",
+    "gate_revision": "033851cf22f086267c5ac6defce46a14748d5528",
+    "gate_path": "tests/check_submission.py",
+    "local_gate_sha256": "f3256ae001e6fef19bf3508ceddadf8cce3230bcc5dc44417a486fba2ccd3f0d",
+    "gate_provenance": "Behavior unchanged; local copy has one extra terminal newline. Removing only that byte matches upstream Git blob a72ab2ffd091252abb7ebbb91fffa99c1e1dc8d0 (6221 bytes).",
+    "python": "3.12.10",
+    "platform": "Windows",
+    "serial": true,
+    "hands_per_format": 1000,
+    "formats_per_candidate": 4,
+    "total_candidate_hands": 20000,
+    "all_pass_d_gate": true,
+    "max_timeout_share": 0.01,
+    "max_thinking_seconds_per_round": 5,
+    "round_bank_seconds": 10,
+    "total_errors": 0,
+    "total_bank_out": 0,
+    "total_timeouts": 1,
+    "timeout_note": "NUCATS fixed-limit: 1 timeout in 3524 decisions (0.03% displayed); every other round recorded 0.",
+    "sealed_platform_verified": false,
+    "interpretation": "Passes D's local tolerance gate; not our zero-timeout smoke gate, a blanket reliability guarantee, or competitive evidence.",
+    "method": "research/D_GATE_INTEGRATION.md",
+    "candidates": [
+      {
+        "entry_file": "candidates/imported/fullhouse_floorfix.py",
+        "sha256": "8d41454d6cafc10225ee474f807b9612dea8a73bd849dbf2ffd0d63a7c66c516",
+        "matches_current_file": true,
+        "exit_code": 0,
+        "pass_d_gate": true,
+        "rounds": [
+          {
+            "format": "no_limit",
+            "hands": 1000,
+            "decisions": 1578,
+            "errors": 0,
+            "timeouts": 0,
+            "timeout_percent_displayed": 0.0,
+            "bank_out": 0,
+            "worst_decision_ms_displayed": 1.7,
+            "thinking_seconds_displayed": 0.51
+          },
+          {
+            "format": "pot_limit",
+            "hands": 1000,
+            "decisions": 1578,
+            "errors": 0,
+            "timeouts": 0,
+            "timeout_percent_displayed": 0.0,
+            "bank_out": 0,
+            "worst_decision_ms_displayed": 1.1,
+            "thinking_seconds_displayed": 0.46
+          },
+          {
+            "format": "fixed_limit",
+            "hands": 1000,
+            "decisions": 1846,
+            "errors": 0,
+            "timeouts": 0,
+            "timeout_percent_displayed": 0.0,
+            "bank_out": 0,
+            "worst_decision_ms_displayed": 3.3,
+            "thinking_seconds_displayed": 0.67
+          },
+          {
+            "format": "no_limit, raise cap 3",
+            "hands": 1000,
+            "decisions": 1600,
+            "errors": 0,
+            "timeouts": 0,
+            "timeout_percent_displayed": 0.0,
+            "bank_out": 0,
+            "worst_decision_ms_displayed": 6.0,
+            "thinking_seconds_displayed": 0.78
+          }
+        ]
+      },
+      {
+        "entry_file": "candidates/imported/fullhouse_shark.py",
+        "sha256": "2d9aed30b745d398e27ab8ac5049781c1530fab1392623d8a7189d0598b69fb3",
+        "matches_current_file": true,
+        "exit_code": 0,
+        "pass_d_gate": true,
+        "rounds": [
+          {
+            "format": "no_limit",
+            "hands": 1000,
+            "decisions": 1140,
+            "errors": 0,
+            "timeouts": 0,
+            "timeout_percent_displayed": 0.0,
+            "bank_out": 0,
+            "worst_decision_ms_displayed": 1.1,
+            "thinking_seconds_displayed": 0.18
+          },
+          {
+            "format": "pot_limit",
+            "hands": 1000,
+            "decisions": 1143,
+            "errors": 0,
+            "timeouts": 0,
+            "timeout_percent_displayed": 0.0,
+            "bank_out": 0,
+            "worst_decision_ms_displayed": 0.5,
+            "thinking_seconds_displayed": 0.16
+          },
+          {
+            "format": "fixed_limit",
+            "hands": 1000,
+            "decisions": 1256,
+            "errors": 0,
+            "timeouts": 0,
+            "timeout_percent_displayed": 0.0,
+            "bank_out": 0,
+            "worst_decision_ms_displayed": 0.6,
+            "thinking_seconds_displayed": 0.18
+          },
+          {
+            "format": "no_limit, raise cap 3",
+            "hands": 1000,
+            "decisions": 1164,
+            "errors": 0,
+            "timeouts": 0,
+            "timeout_percent_displayed": 0.0,
+            "bank_out": 0,
+            "worst_decision_ms_displayed": 0.4,
+            "thinking_seconds_displayed": 0.16
+          }
+        ]
+      },
+      {
+        "entry_file": "candidates/imported/vivelev_monte_carlo.py",
+        "sha256": "dc79942d2be13a3d6bb10cc4824ca15f61f1ae473da6d758372b5b04cd00a8d3",
+        "matches_current_file": true,
+        "exit_code": 0,
+        "pass_d_gate": true,
+        "rounds": [
+          {
+            "format": "no_limit",
+            "hands": 1000,
+            "decisions": 1105,
+            "errors": 0,
+            "timeouts": 0,
+            "timeout_percent_displayed": 0.0,
+            "bank_out": 0,
+            "worst_decision_ms_displayed": 1.8,
+            "thinking_seconds_displayed": 0.63
+          },
+          {
+            "format": "pot_limit",
+            "hands": 1000,
+            "decisions": 1094,
+            "errors": 0,
+            "timeouts": 0,
+            "timeout_percent_displayed": 0.0,
+            "bank_out": 0,
+            "worst_decision_ms_displayed": 1.0,
+            "thinking_seconds_displayed": 0.62
+          },
+          {
+            "format": "fixed_limit",
+            "hands": 1000,
+            "decisions": 1103,
+            "errors": 0,
+            "timeouts": 0,
+            "timeout_percent_displayed": 0.0,
+            "bank_out": 0,
+            "worst_decision_ms_displayed": 5.1,
+            "thinking_seconds_displayed": 0.66
+          },
+          {
+            "format": "no_limit, raise cap 3",
+            "hands": 1000,
+            "decisions": 1099,
+            "errors": 0,
+            "timeouts": 0,
+            "timeout_percent_displayed": 0.0,
+            "bank_out": 0,
+            "worst_decision_ms_displayed": 4.9,
+            "thinking_seconds_displayed": 0.95
+          }
+        ]
+      },
+      {
+        "entry_file": "candidates/imported/nucats_starter.py",
+        "sha256": "bd01e82f89ccb408523e96e6e9940c06b16202b71882091c6bd7346c9b09a298",
+        "matches_current_file": true,
+        "exit_code": 0,
+        "pass_d_gate": true,
+        "rounds": [
+          {
+            "format": "no_limit",
+            "hands": 1000,
+            "decisions": 2469,
+            "errors": 0,
+            "timeouts": 0,
+            "timeout_percent_displayed": 0.0,
+            "bank_out": 0,
+            "worst_decision_ms_displayed": 1.7,
+            "thinking_seconds_displayed": 0.41
+          },
+          {
+            "format": "pot_limit",
+            "hands": 1000,
+            "decisions": 2365,
+            "errors": 0,
+            "timeouts": 0,
+            "timeout_percent_displayed": 0.0,
+            "bank_out": 0,
+            "worst_decision_ms_displayed": 1.7,
+            "thinking_seconds_displayed": 0.39
+          },
+          {
+            "format": "fixed_limit",
+            "hands": 1000,
+            "decisions": 3524,
+            "errors": 0,
+            "timeouts": 1,
+            "timeout_percent_displayed": 0.03,
+            "bank_out": 0,
+            "worst_decision_ms_displayed": 4.3,
+            "thinking_seconds_displayed": 0.53
+          },
+          {
+            "format": "no_limit, raise cap 3",
+            "hands": 1000,
+            "decisions": 2586,
+            "errors": 0,
+            "timeouts": 0,
+            "timeout_percent_displayed": 0.0,
+            "bank_out": 0,
+            "worst_decision_ms_displayed": 1.2,
+            "thinking_seconds_displayed": 0.33
+          }
+        ]
+      },
+      {
+        "entry_file": "candidates/imported/devfun_textured.py",
+        "sha256": "88af4ca6c6962c6590a2beed68a4df5ca6143d95aa2131bec16ea3f762208b74",
+        "matches_current_file": true,
+        "exit_code": 0,
+        "pass_d_gate": true,
+        "rounds": [
+          {
+            "format": "no_limit",
+            "hands": 1000,
+            "decisions": 1259,
+            "errors": 0,
+            "timeouts": 0,
+            "timeout_percent_displayed": 0.0,
+            "bank_out": 0,
+            "worst_decision_ms_displayed": 0.6,
+            "thinking_seconds_displayed": 0.15
+          },
+          {
+            "format": "pot_limit",
+            "hands": 1000,
+            "decisions": 1253,
+            "errors": 0,
+            "timeouts": 0,
+            "timeout_percent_displayed": 0.0,
+            "bank_out": 0,
+            "worst_decision_ms_displayed": 0.5,
+            "thinking_seconds_displayed": 0.15
+          },
+          {
+            "format": "fixed_limit",
+            "hands": 1000,
+            "decisions": 1321,
+            "errors": 0,
+            "timeouts": 0,
+            "timeout_percent_displayed": 0.0,
+            "bank_out": 0,
+            "worst_decision_ms_displayed": 1.4,
+            "thinking_seconds_displayed": 0.19
+          },
+          {
+            "format": "no_limit, raise cap 3",
+            "hands": 1000,
+            "decisions": 1238,
+            "errors": 0,
+            "timeouts": 0,
+            "timeout_percent_displayed": 0.0,
+            "bank_out": 0,
+            "worst_decision_ms_displayed": 1.4,
+            "thinking_seconds_displayed": 0.25
+          }
+        ]
+      }
+    ]
+  }
+}
