@@ -1,6 +1,6 @@
 # Resume note
 
-## CURRENT Sat 14 Nov 18:13 GMT (orchestrator 2, picked up 17:48)
+## CURRENT Sat 14 Nov 18:40 GMT (orchestrator 2, picked up 17:48)
 
 Workflow: `hackathon-build` (`~/.claude/skills/hackathon-build/SKILL.md`), with orchestrated-build's hand-over rules. Read this section, then `SPEC.md` (sections "Time budget" and "Strategy"). Everything below this section is history.
 
@@ -20,25 +20,17 @@ Workflow: `hackathon-build` (`~/.claude/skills/hackathon-build/SKILL.md`), with 
   - Colin's PR #12: v1-fast stays (posted on the PR and board with Owen's OK, 18:09).
   - Tonight: Anh's v1-fast fixes, then layer 2 stacked on them, gated, upload with Owen's OK before 19:30. The equity network + governor port runs now for Sunday 09:00 (Owen, 18:10).
 
-### In flight
-| What | Who | Where | Report |
-|---|---|---|---|
-| Equity network + time governor on v1-fast + layer 2 (`notes/slice-equity-live.md`) | Opus subagent of orchestrator 2 | worktree branch `equity/live` from 3d03277 | final message, and `notes/reports/equity-live.md` committed on `equity/live` |
-| Anh's v1-fast fixes | Anh | `poker/live` or a PR into it | a background loop in orchestrator 2 watches `origin/poker/live` and PRs into it |
-| Adaption data job | Adaption's servers | Owen's account | as before: check sample rows, show Owen the credit cost before launch |
-
-### Ready, not pushed
-- `layer2/live` at 3d03277: v1-fast + layer 2 (fading counts, random-or-strategic read; personalities cut). verify READY (its timing test now uses CPU time). Lane D gate: 1.01x v1-fast, about 2.04 s. vs v1-fast: real clones +0.9 +/- 2.6 (128 rounds), kit/examples +189.9 +/- 35.3. Contract notes posted to Anh on the board.
-- `team/` `eval/benchmark` at 715645a: lane D's relative gate (`--reference` required). PR #4 needs a push, with Owen's OK. Its subprocess timeout checks are still wall time and read high under load (v1-fast fails fixed-limit at load 19).
-- Local `main` at 489d92f tracks `notes/field-report.md`: never push local main.
+### Tonight (18:40)
+- **Upload:** PR #14 (`layer1-2/equity-fix-layer2` -> `poker/live`), file `~/Downloads/poker-candidate/bot.py` (sha256 f5917eba…). Owen OK'd it at 18:36 and uploads it himself. It's v1-fast + Anh's in-range equity fix from #13 + layer 2; #13's shove-only-against-a-raise and call_cap 0.40 are dropped. Same deals vs v1-fast on 38 real clones, 128 rounds: +10.8 ± 3.3 (#13 whole −14.7 ± 3.8; equity alone +7.6 ± 2.8; shove alone −21.0 ± 3.6; cap alone −1.9 ± 2.9). Lane D all pass, about 2.22 s. verify READY. Local branch `live/candidate` is the same bot with the layer 2 report commit kept (not pushed: strategy notes).
+- **B, for Sunday:** `equity/live` (a06e21e): layer 2 + equity network + governor on v1-fast. vs layer 2 on the real clones +10.7 ± 2.6; vs v1-fast +9.6 ± 3.0; vs A +1.0 ± 2.2 (tie). Its report is `notes/reports/equity-live.md` on that branch. Caveats: the network doesn't stop on a wall-clock deadline like the Monte Carlo, so its platform time is less certain; the governor pace steps fire only in the first 40% of a round.
+- **Colin's layer 3** (PR #12): layers on vs off on the real clones −1.0 ± 2.9. Not ported. For Sunday it's Colin's, built on `poker/live` within the 25% share, gated skill by skill against PR #14's bot.
+- **PR #4** (lane D, relative gate) pushed at 715645a.
 
 ### Next steps, in order
 1. Keep one board watcher running (`cd team && uv run tools/board.py wait`, background, restart when it returns).
-2. When Anh's fixes land: gate them (lane D check with `--reference notes/bot-v1-fast.py`, `scripts/verify.sh`, same deals vs v1-fast including `opponents/real`). Rebase `layer2/live` onto them, gate again, bring Owen the upload call before 19:30. Push and PR into `poker/live` only with Owen's OK.
-3. When `equity/live` reports: gate it against `layer2/live`. Rebase it onto Anh's fixes + layer 2 for Sunday 09:00.
-4. Ask Owen to push PR #4's two lane D commits (c1ea055..715645a).
-5. After every upload: Owen fetches the next round; read `think_s`. Above 6 s, cut back.
-6. Sunday by 12:00: the Devpost/README for the Adaption entry, if Owen keeps it. Presentation 13:00-16:30.
+2. After Owen's upload: he fetches the next round; read `think_s` and timeouts. Above 6 s, cut back.
+3. Sunday before 09:00: rebase `equity/live` onto PR #14's branch (the network replaces Anh's Monte Carlo only when on), gate it against PR #14's bot on the real clones, and quiet-laptop timing. Upload only with Owen's OK.
+4. Sunday by 12:00: the Devpost/README for the Adaption entry, if Owen keeps it. Presentation 13:00-16:30.
 
 ### Standing rules (Owen)
 - **Routine work goes to Opus subagents** (`model: "opus"`). The orchestrator plans, briefs, merges and decides.
