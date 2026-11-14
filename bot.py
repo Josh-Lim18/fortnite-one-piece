@@ -53,6 +53,13 @@ PARAMS = {
     "decision_ms": 0.6,        # stop rolling out after this long
     "round_budget_s": 1.2,     # own thinking time after which rollouts are cut to a quarter
     "round_stop_s": 2.5,       # own thinking time after which only a handful of rollouts run: the tournament also counts transport
+    # Layer 3: heads-up skills, each played only when it beats the base move by l3_margin x pot, both priced by the
+    # same expected-value formula from one equity estimate. Gated one by one on the same deals; only winners stay.
+    "l3_checkraise": True,     # after checking, raise a bet from a seat that bets often, with good (not only very strong) equity
+    "l3_margin": 0.03,         # skill EV must beat the base move's EV by this share of the pot
+    "l3_aggr": 0.50,           # check-raise: the bettor's postflop bet rate needed
+    "l3_cr_eq": 0.66,          # check-raise: equity needed (the base raises only from big_value + a margin)
+    "l3_min_hands": 12.0,      # skills read a seat only after this many (faded) hands
 }
 
 RANKS = "23456789TJQKA"
@@ -544,10 +551,12 @@ class Agent:
     def act(self, state):
         t0 = time.perf_counter()
         try:
+            self._ctx = None
             if state["street"] == "preflop":
                 move = self._preflop(state)
             else:
                 move = self._postflop(state, t0)
+            move = self._layer3(state, move)
         except Exception:
             move = self._passive(state)
         self.spent += time.perf_counter() - t0
@@ -691,6 +700,7 @@ class Agent:
             else:
                 widths.append(max(self._rate(s.vpip, s.hands, p["prior_vpip"]), 0.15))
         eq = self._equity(hero, board, widths, t0)
+        self._ctx = (eq, live, bettor, raised_pre)
 
         if to_call == 0:
             # A seat that never folds pays off thinner value and bigger bets, and is never bluffed.
@@ -722,6 +732,76 @@ class Agent:
         if eq >= need - p["risk"]:
             return self._call(state)
         return self._passive(state)
+
+    # ------------------------------------------------------------- layer 3
+    def _layer3(self, state, base):
+        """Heads-up skills on top of the base move: each that applies proposes a move, priced like the base."""
+        p = self.p
+        if self._ctx is None or state.get("betting", "no_limit") != "no_limit" or not any(p[k.flag] for k in SKILLS):
+            return base
+        eq, live, bettor, raised_pre = self._ctx
+        if len(live) != 1:
+            return base
+        v = live[0]
+        s = self._seat(v)
+        if s.hands < p["l3_min_hands"] * self.w:
+            return base
+        me, street = state["seat"], state["street"]
+        mine_now = [h["action"] for h in state["history"] if h["street"] == street and h["seat"] == me]
+        theirs_now = [h["action"] for h in state["history"] if h["street"] == street and h["seat"] == v]
+        ctx = {"eq": eq, "v": v, "s": s, "mine": mine_now, "theirs": theirs_now, "raised_pre": raised_pre}
+        best, best_gain = base, 0.0
+        base_ev = self._l3_ev(state, base, ctx)
+        priced = 0
+        for sk in SKILLS:
+            if priced >= 3:
+                break
+            if not p[sk.flag]:
+                continue
+            conf = sk.applies(self, s, state, base, ctx)
+            if conf <= 0.0:
+                continue
+            cand = sk.move(self, s, state, base, ctx)
+            priced += 1
+            if cand is None or cand.get("action") not in state["legal_actions"]:
+                continue
+            gain = self._l3_ev(state, cand, ctx) - base_ev
+            if gain > p["l3_margin"] * state["pot"] and gain > best_gain:
+                best, best_gain = cand, gain
+        return best
+
+    def _l3_fold(self, s):
+        return self._rate(s.folds, s.folds + s.continues, self.p["prior_fold"], self.p["sticky_prior"])
+
+    def _l3_aggr(self, s):
+        return self._rate(s.bets, s.bets + s.passive, self.p["prior_aggr"])
+
+    @staticmethod
+    def _l3_called_eq(eq, f):
+        """Equity against the part of the range that continues, if the folding part is the weakest."""
+        if f >= 0.98:
+            return eq
+        return max(0.0, min(1.0, (eq - f * min(1.0, eq + 0.35)) / (1.0 - f)))
+
+    def _l3_ev(self, state, move, ctx):
+        """Chips we expect to end with from this decision on (pot share), one street ahead, no future bets."""
+        eq, s = ctx["eq"], ctx["s"]
+        pot, to_call, me = state["pot"], state["to_call"], state["seat"]
+        a = move.get("action")
+        f = self._l3_fold(s)
+        if a == "fold":
+            return 0.0
+        if a in ("check", "call"):
+            return eq * (pot + to_call) - to_call
+        if a == "raise" or a == "all_in":
+            target = state["max_raise_to"] if a == "all_in" else move["amount"]
+            add = target - state["bets"][me]
+            theirs = target - max(state["bets"])
+            eqc = self._l3_called_eq(eq, f)
+            return f * pot + (1 - f) * (eqc * (pot + add + theirs) - add)
+        return eq * pot
+
+
 
     def _equity(self, hero, board, widths, t0):
         """Chance of winning at showdown against one hand per width, each drawn from that top share."""
@@ -764,3 +844,31 @@ class Agent:
             won += 1.0 if mine > best else 0.5 if mine == best else 0.0
             done += 1
         return won / done if done else 0.5
+
+
+class Skill:
+    """A layer 3 skill: applies(bot, seat, state, base, ctx) -> confidence (0 = no), move(...) -> action,
+    assumptions(...) -> what it relies on, for review."""
+
+    __slots__ = ("name", "flag", "applies", "move", "assumptions")
+
+    def __init__(self, name, flag, applies, move, assumptions):
+        self.name, self.flag, self.applies, self.move, self.assumptions = name, flag, applies, move, assumptions
+
+
+def _cr_applies(bot, s, state, base, ctx):
+    p = bot.p
+    if not state["to_call"] or "check" not in ctx["mine"] or base.get("action") != "call":
+        return 0.0
+    ag = bot._l3_aggr(s)
+    return ag if ag >= p["l3_aggr"] and ctx["eq"] >= p["l3_cr_eq"] else 0.0
+
+
+def _cr_move(bot, s, state, base, ctx):
+    return bot._raise(state, max(state["bets"]) + 0.75 * (state["pot"] + state["to_call"]))
+
+
+SKILLS = [
+    Skill("checkraise", "l3_checkraise", _cr_applies, _cr_move,
+          lambda bot, s, st, b, c: {"bet_rate": bot._l3_aggr(s), "we_checked": True, "equity": c["eq"]}),
+]
