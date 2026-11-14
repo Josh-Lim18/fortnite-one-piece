@@ -1,6 +1,11 @@
 # Resume note
 
-## PAUSED Sat 14 Nov about 15:00 GMT: 5-hour usage limit
+## RESUMED Sat 15:20
+
+- Picker relaunched on Opus at 15:25 from `notes/slice-picker.md` (now with the multi-street value plan, calibration and k 4–12 follow-ups), merging the paused branch `worktree-agent-addff0dd05eab9c99` first.
+- Standings at 15:25 (counted round 5 of 54): 39 teams; leaders about +90 bb/100; most between −45 and +45. With 39 teams at 7–8 seats there are few or no empty seats, so few house bots: the real field is team bots, and gains measured against house bots overstate us. Our team's name on the standings is unknown (not "fortnite-one-piece").
+
+## PAUSED Sat 14 Nov about 15:00 GMT: 5-hour usage limit (history)
 
 - Picker agent paused and reported (15:05): only the calibration fix is done, on `worktree-agent-addff0dd05eab9c99` (commits 02b8543, 16956ec), not merged and not verified (`model/test_model.py` and `scripts/verify.sh` not run). Temper 0.05 was the smallest value tried, so try lower. Calibration on held-out rounds: 0.35 stated vs 0.43 actual, 0.51 vs 0.56, 0.71 vs 0.65, 0.88 vs 0.84, 0.99 vs 1.00; two buckets miss the 0.05 target. Seats over 0.95 at 25/100/300 hands: 6% / 25% / 48%. Held-out log-loss 0.5350 tempered vs 0.5311 untempered vs 0.5446 before. The size bucket now marks facing a call of 800+ chips. Shover still never recognised. Not started: everything else in `notes/slice-picker.md`. Resume by relaunching the picker on Opus from that branch.
 - Running when paused (superseded by the line above): the layer 3 autopicker agent (`notes/slice-picker.md`), branch `worktree-agent-addff0dd05eab9c99`, worktree `.claude/worktrees/agent-addff0dd05eab9c99`. It was told to commit and report progress. Its report may not have reached anyone: on resume, read that branch's log and diff against `main` first.
