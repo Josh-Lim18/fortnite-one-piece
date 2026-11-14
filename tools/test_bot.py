@@ -116,15 +116,15 @@ def thinking(cls, hands, seed, pool=POOL):
 
     class Timed(cls):
         def act(self, state):
-            t = time.perf_counter()
+            t = time.thread_time()
             move = cls.act(self, state)
-            clock[0] += time.perf_counter() - t
+            clock[0] += time.thread_time() - t
             return move
 
         def on_hand_end(self, summary):
-            t = time.perf_counter()
+            t = time.thread_time()
             cls.on_hand_end(self, summary)
-            clock[0] += time.perf_counter() - t
+            clock[0] += time.thread_time() - t
 
     players = [LocalPlayer(Timed)] + [LocalPlayer(pool[i % len(pool)]) for i in range(7)]
     FixedHandsTable(players, hands=hands, seed=seed).play()
@@ -133,7 +133,7 @@ def thinking(cls, hands, seed, pool=POOL):
 
 def test_thinking_per_hand_stays_within_budget():
     ours = base = 0.0
-    for seed in range(4):  # back to back on the same deals, so a busy laptop slows both alike
+    for seed in range(4):  # back to back on the same deals in thread CPU time: wall time swung 1.0-1.7x under load
         base += thinking(Baseline, 250, seed)
         ours += thinking(Bot, 250, seed)
     assert ours <= 1.5 * base, (ours, base)
