@@ -1,0 +1,48 @@
+# Slice: lane D, evaluation and quality, in the team repo
+
+**Repo:** the clone at `<ROOT>/team` (`Josh-Lim18/fortnite-one-piece`), already on branch `eval/benchmark` cut from its `main`, with Owen's commit identity set. `<ROOT>` is the folder that holds this `notes/` folder. **Time box:** 75 minutes. **Files you own:** `team/evaluation/` and `team/tests/` only.
+
+## Who we are in this team
+
+Owen and Colin own lane D. The team plan (four lanes) says D determines which candidate bots and improvements actually work, and catches submission failures. Josh (lane A) owns the arena, the starter-kit snapshot, shared configuration and the release `bot.py`; Nguyên Anh (B, C) owns `research/` and `candidates/`. Read `team/AGENTS.md` and `team/README.md`: they are the team's rules. In particular, never edit files outside `evaluation/` and `tests/`. Never run `tools/board.py` (no posting, no `wait`): Owen decides what goes on the board. Never push and never open a PR.
+
+## Reuse, don't rewrite
+
+Owen's own repo at `<ROOT>` already has most of this, built for his bot. Read and port (adapt paths and names; keep behaviour, error handling and tests):
+
+- `<ROOT>/scripts/check_bot.py`: size, standard-library-only and `Agent` checks.
+- `<ROOT>/tools/sim.py` and `<ROOT>/tools/test_sim.py`: in-process paired-seed tables with standard errors, and their tests.
+- `<ROOT>/opponents/`: benchmark bots (`clone_base.py` is a helper the others import).
+- `<ROOT>/tools/analyze.py` and its test: hand-history analysis.
+- `<ROOT>/kit/`: the organisers' starter kit, unchanged (engine, `local_sim.py`, house bots in `examples/`, `README.md` with every rule and state field).
+
+## The kit dependency
+
+The engine lives in the starter kit, which Josh owns and has not added to the team repo yet. Every tool takes `--kit PATH`, defaulting to `kit/` at the repo root, and fails with one clear sentence when it is missing. For your own runs, point it at `<ROOT>/kit`. Do not copy the kit into the team repo.
+
+## Build
+
+1. `tests/check_submission.py BOT.py [--kit PATH]`, the gate before any upload. It must enforce the real constraints and exit non-zero on any failure, printing one line per check:
+   - one file, at most 200,000 bytes, a top-level class `Agent`;
+   - only standard-library imports, and the file imports and constructs `Agent()` under real Python 3.12 (`uv run --python 3.12`; uv and a 3.12 are installed), not the laptop's newer Python;
+   - plays rounds through the kit's subprocess player with the real limits (10 ms a decision, 10 s bank a round) under `no_limit`, `pot_limit`, `fixed_limit` and a raise cap of 3, with zero errors; it reports timeouts, bank-outs, worst decision time and worst round's thinking. A timeout count above 1% fails, and so does more than 5 s of thinking in a round. Say in the output that the laptop is not the tournament sandbox.
+2. `evaluation/run.py`: paired comparisons. Candidates and an incumbent play the same deals against an opponent pool (rotating seats, seeded choice of opponents), in-process for speed. Each run writes one JSON record to `evaluation/results/<UTC time>-<short id>.json`, never appending to a shared file. The record holds the run record and results from the team contract: each candidate's path and sha256, the engine revision (a hash of the kit's engine files), opponents with their hashes, seats, seeds, hands, runtime settings, and per candidate chips, bb/100, the paired difference with its standard error, errors, timeouts, bank-outs and thinking time. Keep a fixed set of held-out seeds in `evaluation/holdout_seeds.txt` that `run.py` refuses to use unless given `--final`.
+3. `evaluation/aggregate.py`: reads every record and prints one table per incumbent: candidate, rounds, difference ± standard error, and a verdict. "Better" needs the difference above twice its standard error on the held-out seeds; anything else keeps the incumbent.
+4. `evaluation/opponents/`: the benchmark pool, ported.
+5. `evaluation/analyze.py`: the hand-history analysis, ported. It runs on the files `kit/fetch_hands.py` saves; no real file exists yet, so keep every assumption about their shape in one loader.
+6. `evaluation/README.md`: the commands, the verdict rule, and what each check does and does not prove.
+
+## Tests
+
+In `tests/`, runnable as `python3 tests/test_x.py`: the same seed gives the same chips twice (deal reproducibility, which paired comparisons rely on); chips at a table sum to zero; a bot compared with itself gives exactly zero; `check_submission.py` fails a deliberately broken bot (a non-stdlib import, a 201 KB file, an `act` that raises) and passes `kit/bot.py`.
+
+## Done
+
+Run every test and `check_submission.py` on `<ROOT>/kit/bot.py` and on `<ROOT>/bot.py`, plus one real `run.py` comparing `<ROOT>/bot.py` with `<ROOT>/kit/bot.py` against `evaluation/opponents/` and `aggregate.py` on its record. Commit on `eval/benchmark` with clear messages and no co-author or "generated by" lines.
+
+## Report (final message, under 300 words)
+
+1. What each command printed (the check results, the comparison's difference ± standard error and the verdict).
+2. Anything that touches files outside `evaluation/` and `tests/` (should be none).
+3. What is missing or approximate.
+4. What you did not verify.

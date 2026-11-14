@@ -28,13 +28,16 @@ Updated Sat 14 Nov 2026, 13:25 GMT. Workflow: `hackathon-build`. Read `SPEC.md` 
 | Opponent pool and analyser | `notes/slice-opponents.md` | Fable | merged | on main |
 | Preflop matchup table | `notes/slice-matchups.md` | Sonnet | merged | on main; strategy agent told |
 | Adaption dataset | `notes/slice-adaption-data.md` | Opus | merged | on main; data in `adaption/data/` (gitignored), sent to Owen |
-| Bet-size reads, robust profiling, random-vs-strategic, tight fix | `notes/slice-reads.md` | Opus | its own worktree | running since 13:32 |
-| Adaptive pressure moves | `notes/slice-pressure.md` | Opus | not started | launch after reads merges (same file) |
+| Bet-size reads, robust profiling, random-vs-strategic, tight fix | `notes/slice-reads.md` | Opus | stopped 13:50 (Owen: bot work is lane C now) | unmerged worktree `worktree-agent-a3a24d9fe3e3ea477` |
+| Lane D: evaluation and tests in the team repo | `notes/slice-lane-d.md` | Opus | `team/` clone, branch `eval/benchmark` | running since 13:50 |
+| Adaptive pressure moves | `notes/slice-pressure.md` | Opus | parked | bot work is lane C's |
 | Adaption platform research | prompt only, read-only | Opus | none | reported; facts below |
 
 Merge rule: in the agent's worktree `git merge main`, run `scripts/verify.sh`, then `git merge --ff-only <branch>` on main. `git worktree list` shows the worktrees.
 
 ## Next steps
+
+0. Owen's work is lane D (Sat 13:50): `team/` is a clone of the team repo on `eval/benchmark`. When the lane D agent reports, review the branch; pushing it and opening a PR need Owen's go-ahead. The board post drafted for Owen is not posted.
 
 1. Merge each slice as it reports.
 2. Bot slices run one at a time, all on Opus: strategy (running), then `notes/slice-reads.md`, then `notes/slice-pressure.md`. Upload each that beats its predecessor. The strategy agent owns `bot.py` (`notes/slice-strategy.md`). When it reports, read its three comparisons, merge, and send `bot.py` to Owen to upload.
